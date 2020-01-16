@@ -12,22 +12,6 @@ from models import PolicyNetwork, ValueNetwork
 from local_ppo import LocalPPO
 from global_ppo import GlobalPPO
 
-# The properties of args:
-# 1. env_name (default = 'HalfCheetah-v2')
-# 2. device (default = "cuda:0")
-# 3. seed (default = 1)
-# 4. hidden_sizes (default = (64, 32))
-# 5. episodes (default = 100. Not the number of trajectories, but the number of batches.)
-# 6. max_episode_step (default = 1000)
-# 7. batch_size (default = 4000)
-# 8. gamma (default = 0.99)
-# 9. tau (default = 0.97)
-# 10. clip (default = 0.2)
-# 11. max_kl (default =  0.01)
-# 12. pi_steps_per_update (default = 80) 
-# 13. value_steps_per_update (default = 80)
-# 14. pi_lr (default = 3e-4)
-# 15. value_lr (default = 1e-3)
 def run(rank, size, args):
     env = gym.make(args.env_name)
     device = args.device
@@ -43,9 +27,9 @@ def run(rank, size, args):
     # 2.Create actor, critic, EnvSampler() and PPO.
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.shape[0]
-    actor = PolicyNetwork(state_size, action_size, hidden_sizes=args.hidden_sizes).to(device)
+    actor = PolicyNetwork(state_size, action_size, hidden_sizes=args.hidden_sizes, init_std=args.init_std).to(device)
     critic = ValueNetwork(state_size, hidden_sizes=args.hidden_sizes).to(device)
-    env_sampler = EnvSampler(env, args.max_episode_step)
+    env_sampler = EnvSampler(env, args.max_episode_step, args.reward_step)
     ppo_args = {
         'actor': actor,
         'critic': critic,
@@ -99,7 +83,9 @@ Args = namedtuple('Args',
                 'pi_steps_per_update',
                 'value_steps_per_update',
                 'pi_lr',
-                'value_lr'))
+                'value_lr',
+                'init_std',
+                'reward_step'))
 
 def parallel_run(start_time, rank, size, fn, args, backend='gloo'):
     """ Initialize the distributed environment. """
@@ -107,8 +93,8 @@ def parallel_run(start_time, rank, size, fn, args, backend='gloo'):
     os.environ['MASTER_PORT'] = '29500'
     dist.init_process_group(backend, rank=rank, world_size=size)
 
-    logdir = "./logs/alg_{}/env_{}/workers{}".format(args.alg_name, args.env_name, size)
-    file_name = 'alg_{}_env_{}_worker{}_seed{}_time{}.csv'.format(args.alg_name, args.env_name, rank, args.seed, start_time)
+    logdir = "./logs/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg_name, args.env_name, args.reward_step, size)
+    file_name = 'alg_{}_env_{}_reward_step_{}_worker{}_seed{}_time{}.csv'.format(args.alg_name, args.env_name, args.reward_step, rank, args.seed, start_time)
     full_name = os.path.join(logdir, file_name)
 
     csvfile = open(full_name, 'w')
@@ -137,11 +123,13 @@ if __name__ == "__main__":
                         help='number of batch size (default: 1000)')
     parser.add_argument('--episodes', type=int, default=1000, metavar='N',
                         help='number of experiment episodes(default: 1000)')
+    parser.add_argument('--reward_step', type=int, default=0, metavar='N',
+                        help='the unit of reward step(default: 0)')
     parser.add_argument('--device', default='cpu', metavar='G',
                         help='device (default: cpu)')
     args = parser.parse_args()
 
-    logdir = "./logs/alg_{}/env_{}/workers{}".format(args.alg, args.env_name, args.agent)
+    logdir = "./logs/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg, args.env_name, args.reward_step, args.agent)
     if not os.path.exists(logdir):
         os.makedirs(logdir)
 
@@ -165,7 +153,9 @@ if __name__ == "__main__":
                     80,                 # pi_steps_per_update
                     50,                 # value_steps_per_update
                     3e-4,               # pi_lr
-                    1e-3)               # value_lr
+                    1e-3,               # value_lr
+                    1.0,                # init_std
+                    args.reward_step)   # reward_step
         p = Process(target=parallel_run, args=(start_time, rank, size, run, alg_args, backend))
         p.start()
         processes.append(p)

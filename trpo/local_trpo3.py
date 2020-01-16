@@ -22,12 +22,6 @@ class LocalTRPO3(LocalTRPO):
                                     cg_steps, linesearch_steps,
                                     gamma, tau, damping, max_kl, device)
 
-    def get_actor_loss_grad(self, state, action, advantage):
-        loss_grad = super(LocalTRPO3, self).get_actor_loss_grad(state, action, advantage)
-        # Average actor_loss_grad.
-        self.average_variables(loss_grad)
-        return loss_grad
-    
     def cg(self, A, b, iters=10, accuracy=1e-10):
         x = super(LocalTRPO3, self).cg(A, b, iters, accuracy)
         self.average_variables(x)

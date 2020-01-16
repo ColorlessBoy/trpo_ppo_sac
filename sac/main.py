@@ -135,7 +135,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Run experiment with optional args')
-    parser.add_argument('--alg_name', default='sac', metavar='G',
+    parser.add_argument('--alg', default='sac', metavar='G',
                         help='name of environment name (default: HalfCheetah-v2)')
     parser.add_argument('--seed', type=int, default=0, metavar='N',
                         help='random seed (default: 0)')
@@ -148,7 +148,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     alg_args = Args(
-        args.alg_name,    # alg_name
+        args.alg,         # alg_name
         args.env_name,    # env_name
         args.device,      # device
         (400, 300),       # hidden_size

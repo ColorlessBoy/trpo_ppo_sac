@@ -13,9 +13,10 @@ plt.switch_backend('agg')
 
 parser = argparse.ArgumentParser(description='Plot experiment results')
 parser.add_argument('--alg_list', nargs='+', help='algorimthms to plot')
-parser.add_argument('--env_name', default='Hopper-v2', type=str, help='env-name')
+parser.add_argument('--env_name', default='HalfCheetah-v2', type=str, help='env-name')
 parser.add_argument('--workers', default=2, type=int, help='workers')
 parser.add_argument('--exp_num', default=0, type=int, help='The number of experiment.(0 means all.)')
+parser.add_argument('--reward_step', default=0, type=int, help='reward step')
 
 args = parser.parse_args()
 
@@ -32,13 +33,13 @@ start, end = 0, 1
 # load csv
 for alg in alg_list:
     if alg == 'trpo':
-        path = './trpo/logs/alg_{}/env_{}'.format(alg, env_name)
+        path = './trpo/logs/alg_{}/env_{}_reward_step_{}'.format(alg, env_name, args.reward_step)
     elif alg == 'ppo':
-        path = './ppo/logs/alg_{}/env_{}'.format(alg, env_name)
+        path = './ppo/logs/alg_{}/env_{}_reward_step_{}'.format(alg, env_name, args.reward_step)
     elif 'trpo' in alg:
-        path = './trpo/logs/alg_{}/env_{}/workers{}'.format(alg, env_name, args.workers)
+        path = './trpo/logs/alg_{}/env_{}_reward_step_{}/workers{}'.format(alg, env_name, args.reward_step, args.workers)
     else:
-        path = './ppo/logs/alg_{}/env_{}/workers{}'.format(alg, env_name, args.workers)
+        path = './ppo/logs/alg_{}/env_{}_reward_step_{}/workers{}'.format(alg, env_name, args.reward_step, args.workers)
 
     file_list = os.listdir(path)
     file_list.sort(key=lambda x:x[x.find('time'):])

@@ -15,23 +15,6 @@ from local_trpo3 import LocalTRPO3
 from hmtrpo import HMTRPO
 from global_trpo import GlobalTRPO
 
-# The properties of args:
-# 1. env_name (default = 'HalfCheetah-v2')
-# 2. device (default = 'cuda:0')
-# 3. seed (default = 1)
-# 4. hidden_sizes (default = (64, 64))
-# 5. max_episode_step (default = 1000)
-# 6. batch_size (default = 1000)
-# 7. episodes (default = 1000)
-# 8. value_lr (default = 1e-3)
-# 9. value_steps_per_update (default=80)
-# 10. cg_steps (default = 20)
-# 11. lineasearch_steps (default = 20)
-# 12. gamma (default = 0.99)
-# 13. tau (default = 0.97)
-# 14. damping (default = 0.1)
-# 15. max_kl (default = 0.01)
-
 def run(rank, size, args):
     env = gym.make(args.env_name)
     device = args.device
@@ -50,7 +33,7 @@ def run(rank, size, args):
     actor = PolicyNetwork(state_size, action_size, 
                 hidden_sizes=args.hidden_sizes, init_std=args.init_std).to(device)
     critic = ValueNetwork(state_size, hidden_sizes=args.hidden_sizes).to(device)
-    env_sampler = EnvSampler(env, args.max_episode_step)
+    env_sampler = EnvSampler(env, args.max_episode_step, args.reward_step)
     trpo_args = {
         'actor': actor, 
         'critic': critic,
@@ -111,6 +94,8 @@ def run(rank, size, args):
 # 13. tau (default = 0.97)
 # 14. damping (default = 0.1)
 # 15. max_kl (default = 0.01)
+# 16. init_std (default = 1.0)
+# 17. reward_step (default = 0)
 Args = namedtuple('Args', 
                     ('alg_name',
                     'env_name',
@@ -128,7 +113,8 @@ Args = namedtuple('Args',
                     'tau',
                     'damping',
                     'max_kl',
-                    'init_std'))
+                    'init_std',
+                    'reward_step'))
 
 def parallel_run(start_time, rank, size, fn, args, backend='gloo'):
     """ Initialize the distributed environment. """
@@ -136,8 +122,8 @@ def parallel_run(start_time, rank, size, fn, args, backend='gloo'):
     os.environ['MASTER_PORT'] = '29500'
     dist.init_process_group(backend, rank=rank, world_size=size)
 
-    logdir = "./logs/alg_{}/env_{}/workers{}".format(args.alg_name, args.env_name, size)
-    file_name = 'alg_{}_env_{}_worker{}_seed{}_time{}.csv'.format(args.alg_name, args.env_name, rank, args.seed, start_time)
+    logdir = "./logs/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg_name, args.env_name, args.reward_step, size)
+    file_name = 'alg_{}_env_{}_reward_step_{}_worker{}_seed{}_time{}.csv'.format(args.alg_name, args.env_name, args.reward_step, rank, args.seed, start_time)
     full_name = os.path.join(logdir, file_name)
 
     csvfile = open(full_name, 'w')
@@ -167,9 +153,11 @@ if __name__ == "__main__":
                         help='number of batch size (default: 1000)')
     parser.add_argument('--episodes', type=int, default=1000, metavar='N',
                         help='number of experiment episodes(default: 1000)')
+    parser.add_argument('--reward_step', type=int, default=0, metavar='N',
+                        help='the unit of reward step (default: 0)')
     args = parser.parse_args()
 
-    logdir = "./logs/alg_{}/env_{}/workers{}".format(args.alg, args.env_name, args.agent)
+    logdir = "./logs/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg, args.env_name, args.reward_step, args.agent)
     if not os.path.exists(logdir):
         os.makedirs(logdir)
 
@@ -194,7 +182,8 @@ if __name__ == "__main__":
                     0.97,               # tau
                     0.1,                # damping
                     0.02,               # max_kl
-                    1.0)                # init_std 
+                    1.0,                # init_std 
+                    args.reward_step)   # reward_step
         p = Process(target=parallel_run, args=(start_time, rank, size, run, alg_args, backend))
         p.start()
         processes.append(p)

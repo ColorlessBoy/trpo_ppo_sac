@@ -33,9 +33,10 @@ class HMTRPO(LocalTRPO):
         self.average_variables(x)
         return x
 
-    def linesearch(self, state, action, advantage, fullstep, steps=10):
-        start_time = time()
-        self.average_variables(fullstep)
-        actor_loss = super(HMTRPO, self).linesearch(state, action, advantage, fullstep, steps)
-        print('HMTRPO linesearch() uses {}s.'.format(time() - start_time)) 
-        return actor_loss
+#   I find fullsteps are already same.
+#   def linesearch(self, state, action, advantage, fullstep, steps=10):
+#       start_time = time()
+#       self.average_variables(fullstep)
+#       actor_loss = super(HMTRPO, self).linesearch(state, action, advantage, fullstep, steps)
+#       print('HMTRPO linesearch() uses {}s.'.format(time() - start_time)) 
+#       return actor_loss
