@@ -11,6 +11,7 @@ from models import PolicyNetwork, ValueNetwork, QNetwork
 from utils import EnvSampler, hard_update
 from sac import SAC
 from sacnp import SACNP
+from sacnp2 import SACNP2
 
 def run(args):
     env = gym.make(args.env_name)
@@ -51,7 +52,11 @@ def run(args):
                     gamma=0.99, alpha=0.2, lm=1,
                     v_lr=1e-3, q_lr=1e-3, pi_lr=1e-3, vt_lr = args.vt_lr,
                     device=device)
-
+    elif args.alg_name == 'sacnp2':
+        alg = SACNP2(v_net, q1_net, q2_net, pi_net, vt_net,
+                    gamma=0.99, alpha=0.2, lm=1,
+                    v_lr=1e-3, q_lr=1e-3, pi_lr=1e-3, vt_lr = args.vt_lr,
+                    device=device)
     # 3. Warmup.
     start_time = time()
     env_sampler.addSamples(args.start_steps)
