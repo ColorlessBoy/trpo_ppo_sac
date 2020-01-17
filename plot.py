@@ -66,7 +66,8 @@ for alg in alg_list:
     
 #figure configuration
 fig = plt.figure(figsize=(14, 7))
-plt.title(env_name, fontsize=50)
+title = env_name if args.reward_step == 0 else '{}-rs{}'.format(env_name, args.reward_step)
+plt.title(title, fontsize=50)
 plt.xlabel('System probes(state-action pair)', fontsize=35)
 plt.ylabel('Average return', fontsize=35)
 plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
@@ -81,5 +82,5 @@ ax = plt.subplot(111)
 ax.xaxis.offsetText.set_fontsize(30)
 ax.yaxis.offsetText.set_fontsize(30)
 plt.legend(fontsize = 'xx-large', loc = 'upper left')
-plt.savefig('./{}.pdf'.format(env_name))
+plt.savefig('./{}.pdf'.format(title))
 #plt.show()

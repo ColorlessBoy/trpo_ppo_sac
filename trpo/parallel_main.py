@@ -75,7 +75,10 @@ def run(rank, size, args):
         episode_reward, samples = env_sampler(get_action, args.batch_size, get_value)
         actor_loss, value_loss = alg.update(*samples)
         total_step += args.batch_size
-        yield total_step, episode_reward, actor_loss, value_loss
+        model = None
+        if rank == 0 and episode == args.episodes:
+            model = actor
+        yield total_step, episode_reward, actor_loss, value_loss, model
 
 # The properties of args:
 # 0. alg_name (default = 'hmtrpo')
@@ -129,9 +132,17 @@ def parallel_run(start_time, rank, size, fn, args, backend='gloo'):
     csvfile = open(full_name, 'w')
     writer = csv.writer(csvfile)
     writer.writerow(['step', 'reward'])
-    for step, reward, actor_loss, value_loss in fn(rank, size, args):
+
+    model_dir = "./models/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg_name, args.env_name, args.reward_step, size)
+    model_file_name = 'alg_{}_env_{}_reward_step_{}_actor_seed{}_time{}.pth.tar'.format(args.alg_name, 
+                        args.env_name, args.reward_step, args.seed, start_time)
+    model_full_name = os.path.join(model_dir, model_file_name)
+
+    for step, reward, actor_loss, value_loss, model in fn(rank, size, args):
         writer.writerow([step, reward])
         print('Rank {}, Step {}: Reward = {}, actor_loss = {}, value_loss = {}'.format(rank, step, reward, actor_loss, value_loss))
+        if model:
+            torch.save(model.state_dict(), model_full_name)
 
     csvfile.close()
 
@@ -160,6 +171,10 @@ if __name__ == "__main__":
     logdir = "./logs/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg, args.env_name, args.reward_step, args.agent)
     if not os.path.exists(logdir):
         os.makedirs(logdir)
+
+    model_dir = "./models/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg, args.env_name, args.reward_step, args.agent)
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
 
     size = args.agent
     processes = []
