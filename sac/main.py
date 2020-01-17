@@ -75,16 +75,7 @@ def run(args):
             action = pi_net.get_mean_action(state)
         return action.cpu().numpy()[0]
 
-    def save_models(model, model_name, step):
-        folder_path = './model/{}'.format(model_name)
-        file_name = 'step{}_time{}.pth.tar'.format(step, time())
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-        full_name = os.path.join(folder_path, file_name)
-        torch.save(model.state_dict(), full_name)
-
     trajectory = 0
-    model_save_file = 'models'
     for step in range(1, args.total_steps+1):
         done, episode_reward = env_sampler.addSample(get_action)
         if args.alg_name == 'sac':
@@ -96,14 +87,15 @@ def run(args):
             losses = alg.update(batch1, batch2)
         if done:
             trajectory += 1
-            test_reward = None
-            if trajectory % args.test_frequency == 0:
-                start_time = time()
+
+        test_reward = None
+        test_pi_net = None
+        if done or step == args.total_steps:
+            if trajectory % args.test_frequency == 0 or step == args.total_steps:
                 test_reward = env_sampler.test(get_mean_action, 10)
-                print('Testing policy uses {}s.'.format(time() - start_time))
-            if trajectory % 100 == 0:
-                save_models(pi_net, 'pi_net', step)
-            yield (step, episode_reward, *losses, test_reward)
+            if trajectory % args.model_save_frequency == 0 or step == args.total_steps:
+                test_pi_net = pi_net
+            yield (step, episode_reward, *losses, test_reward, test_pi_net)
 
 
 # The properties of args:
@@ -117,8 +109,9 @@ def run(args):
 # 7. start_steps (default: 10000)
 # 8. seed (default: 0)
 # 9. test_frequency (default: 10)
-# 10. activation (default: torch.relu)
-# 11. output_activation (default: torch.tanh)
+# 10. model_save_frequency (default: 100)
+# 11. activation (default: torch.relu)
+# 12. output_activation (default: torch.tanh)
 
 Args = namedtuple( 'Args',
     ('alg_name',
@@ -132,6 +125,7 @@ Args = namedtuple( 'Args',
     'seed',
     'vt_lr',
     'test_frequency',
+    'model_save_frequency',
     'activation',
     'output_activation')
 )
@@ -148,8 +142,12 @@ if __name__ == '__main__':
                         help='name of environment name (default: HalfCheetah-v2)')
     parser.add_argument('--device', default='cpu', metavar='G',
                         help='device (default cpu)')
-    parser.add_argument('--total_steps', type=int, default=100000, metavar='N',
+    parser.add_argument('--total_steps', type=int, default=1000000, metavar='N',
                         help='total_steps (default 100000)')
+    parser.add_argument('--test_frequency', type=int, default=10, metavar='N',
+                        help='test_frequency (default 10)')
+    parser.add_argument('--model_save_frequency', type=int, default=100, metavar='N',
+                        help='model save frequency (default 10)')
     args = parser.parse_args()
 
     alg_args = Args(
@@ -163,34 +161,54 @@ if __name__ == '__main__':
         10000,            # start_steps
         args.seed,        # seed
         0.005,            # vt_lr
-        10,               # test_frequency
+        args.test_frequency,       # test_frequency
+        args.model_save_frequency, # model_save_frequency
         torch.relu,       # activation
         torch.tanh,       # output_activation
     )
 
-    logdir = "./logs/alg_{}/env_{}".format(alg_args.alg_name, alg_args.env_name)
-    file_name = 'alg_{}_env_{}_batch{}_seed{}_time{}.csv'.format(alg_args.alg_name, alg_args.env_name, alg_args.batch_size, alg_args.seed, time())
-    test_file_name = 'test_alg_{}_env_{}_batch{}_seed{}_time{}.csv'.format(alg_args.alg_name, alg_args.env_name, alg_args.batch_size, alg_args.seed, time())
-    if not os.path.exists(logdir):
-        os.makedirs(logdir)
-    full_name = os.path.join(logdir, file_name)
-    test_full_name = os.path.join(logdir, test_file_name)
+    # Train Dir
+    train_logdir = "./logs/alg_{}/env_{}".format(alg_args.alg_name, alg_args.env_name)
+    file_name = 'train_alg_{}_env_{}_batch{}_seed{}_time{}.csv'.format(alg_args.alg_name, alg_args.env_name, alg_args.batch_size, alg_args.seed, time())
+    if not os.path.exists(train_logdir):
+        os.makedirs(train_logdir)
+    full_name = os.path.join(train_logdir, file_name)
 
     csvfile = open(full_name, 'w')
     writer = csv.writer(csvfile)
     writer.writerow(['step', 'reward'])
 
+    # Test Dir
+    test_logdir = "./logs/alg_{}/env_{}".format(alg_args.alg_name, alg_args.env_name)
+    test_file_name = 'test_alg_{}_env_{}_batch{}_seed{}_time{}.csv'.format(alg_args.alg_name, 
+                    alg_args.env_name, alg_args.batch_size, alg_args.seed, time())
+    if not os.path.exists(test_logdir):
+        os.makedirs(test_logdir)
+    test_full_name = os.path.join(test_logdir, test_file_name)
     test_csvfile = open(test_full_name, 'w')
     test_writer = csv.writer(test_csvfile)
-    test_writer.writerow(['step', 'test_reward'])
+    test_writer.writerow(['step', 'reward'])
 
+    # Model Dir
+    modeldir = "./models/alg_{}/env_{}".format(alg_args.alg_name, alg_args.env_name)
+    if not os.path.exists(modeldir):
+        os.makedirs(modeldir)
+    
     start_time = time()
-    for step, reward, q1_loss, q2_loss, pi_loss, v_loss, vt_loss, test_reward in run(alg_args):
+
+    for step, reward, q1_loss, q2_loss, pi_loss, v_loss, vt_loss, test_reward, pi_net in run(alg_args):
         writer.writerow([step, reward])
         print("Step {}: Reward = {:>10.6f}, q1_loss = {:>8.6f}, q2_loss = {:>8.6f}, pi_loss = {:>8.6f}, v_loss = {:>8.6f}, vt_loss = {:>8.6f}".format(
             step, reward, q1_loss, q2_loss, pi_loss, v_loss, vt_loss
         ))
+
         if test_reward is not None:
             test_writer.writerow([step, test_reward])
             print("Step {}: Test reward = {}".format(step, test_reward))
+        if pi_net is not None:
+            modelfile = "alg_{}_env_{}_batch{}_seed{}_step{}_time{}.pth.tar".format(alg_args.alg_name, 
+                    alg_args.env_name, alg_args.batch_size, alg_args.seed, step, time())
+            model_full_name = os.path.join(modeldir, modelfile)
+            torch.save(pi_net.state_dict(), model_full_name)
+
     print("Total time: {}s.".format(time() - start_time))
