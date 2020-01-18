@@ -166,7 +166,7 @@ if __name__ == "__main__":
 
     start_rank = args.node_rank * size // args.node_size
     end_rank = (args.node_rank + 1) * size // args.node_size
-    for rank in range(size):
+    for rank in range(start_rank, end_rank):
         alg_args = Args(args.alg,       # alg_name
                     args.env_name,      # env_name
                     args.device,        # device
