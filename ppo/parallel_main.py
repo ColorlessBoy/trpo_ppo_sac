@@ -88,12 +88,14 @@ Args = namedtuple('Args',
                 'pi_lr',
                 'value_lr',
                 'init_std',
-                'reward_step'))
+                'reward_step',
+                'master_addr',
+                'master_port'))
 
 def parallel_run(start_time, rank, size, fn, args, backend='gloo'):
     """ Initialize the distributed environment. """
-    os.environ['MASTER_ADDR'] = '127.0.0.1'
-    os.environ['MASTER_PORT'] = '29500'
+    os.environ['MASTER_ADDR'] = args.master_addr
+    os.environ['MASTER_PORT'] = args.master_port
     dist.init_process_group(backend, rank=rank, world_size=size)
 
     logdir = "./logs/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg_name, args.env_name, args.reward_step, size)
@@ -118,13 +120,15 @@ def parallel_run(start_time, rank, size, fn, args, backend='gloo'):
     csvfile.close()
 
 if __name__ == "__main__":
+    torch.multiprocessing.set_start_method('spawn')
+
     import argparse
 
     parser = argparse.ArgumentParser(description='Run experiment with optional args')
     parser.add_argument('--seed', type=int, default=0, metavar='N',
                         help='random seed (default: 0)')
-    parser.add_argument('--agent', type=int, default=8, metavar='N',
-                        help='number of agents (default: 8)')
+    parser.add_argument('--workers', type=int, default=8, metavar='N',
+                        help='number of workers(default: 8)')
     parser.add_argument('--alg', default="local_ppo", metavar='G',
                         help='name of the algorithm to run (default: local_ppo)')
     parser.add_argument('--env_name', default="HalfCheetah-v2", metavar='G',
@@ -137,20 +141,31 @@ if __name__ == "__main__":
                         help='the unit of reward step(default: 0)')
     parser.add_argument('--device', default='cpu', metavar='G',
                         help='device (default: cpu)')
+    parser.add_argument('--master_addr', default='127.0.0.1', metavar='G',
+                        help="master node's ip address")
+    parser.add_argument('--master_port', type=str, default='29500', metavar='N',
+                        help='master port')
+    parser.add_argument('--node_size', type=int, default=1, metavar='N',
+                        help='number of nodes')
+    parser.add_argument('--node_rank', type=int, default=0, metavar='N',
+                        help='rank of this node')
     args = parser.parse_args()
 
-    logdir = "./logs/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg, args.env_name, args.reward_step, args.agent)
+    logdir = "./logs/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg, args.env_name, args.reward_step, args.workers)
     if not os.path.exists(logdir):
         os.makedirs(logdir)
 
-    model_dir = "./models/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg, args.env_name, args.reward_step, args.agent)
+    model_dir = "./models/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg, args.env_name, args.reward_step, args.workers)
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
 
-    size = args.agent
+    size = args.workers // args.node_size * args.node_size
     processes = []
     start_time = time()
     backend = 'gloo' if args.device == 'cpu' else 'nccl'
+
+    start_rank = args.node_rank * size // args.node_size
+    end_rank = (args.node_rank + 1) * size // args.node_size
     for rank in range(size):
         alg_args = Args(args.alg,       # alg_name
                     args.env_name,      # env_name
@@ -169,7 +184,9 @@ if __name__ == "__main__":
                     3e-4,               # pi_lr
                     1e-3,               # value_lr
                     1.0,                # init_std
-                    args.reward_step)   # reward_step
+                    args.reward_step,   # reward_step
+                    args.master_addr,   # master_addr
+                    args.master_port)   # master_port
         p = Process(target=parallel_run, args=(start_time, rank, size, run, alg_args, backend))
         p.start()
         processes.append(p)
