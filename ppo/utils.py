@@ -1,5 +1,6 @@
 import gym
 from collections import namedtuple
+import math
 
 # Taken from
 # https://github.com/pytorch/tutorials/blob/master/Reinforcement%20(Q-)Learning%20with%20PyTorch.ipynb
@@ -39,7 +40,7 @@ class EnvSampler(object):
     
     def reward_encode(self, reward):
         if self.reward_step > 0:
-            reward = math.floor(reward / self.reward_step) * reward_step 
+            reward = math.floor(reward / self.reward_step) * self.reward_step 
         return reward
     
     def env_init(self):
