@@ -26,7 +26,7 @@ class EnvSampler(object):
         self.max_episode_step = max_episode_step
         self.action_scale = (env.action_space.high - env.action_space.low)/2
         self.action_bias = (env.action_space.high + env.action_space.low)/2
-        self.reward_step = 0 # Continuous or non
+        self.reward_step = reward_step # Continuous or non
         self.episode_num = -1
         self.env_init()
     
