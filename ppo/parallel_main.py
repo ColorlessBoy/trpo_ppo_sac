@@ -98,7 +98,7 @@ def parallel_run(start_time, rank, size, fn, args, backend='gloo'):
     os.environ['MASTER_PORT'] = args.master_port
     dist.init_process_group(backend, rank=rank, world_size=size)
 
-    logdir = "./logs/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg_name, args.env_name, args.reward_step, size)
+    logdir = "./logs/alg_{}/env_{}/workers{}".format(args.alg_name, args.env_name, size)
     file_name = 'alg_{}_env_{}_reward_step_{}_worker{}_seed{}_time{}.csv'.format(args.alg_name, args.env_name, args.reward_step, rank, args.seed, start_time)
     full_name = os.path.join(logdir, file_name)
 
@@ -106,7 +106,7 @@ def parallel_run(start_time, rank, size, fn, args, backend='gloo'):
     writer = csv.writer(csvfile)
     writer.writerow(['step', 'reward'])
 
-    model_dir = "./models/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg_name, args.env_name, args.reward_step, size)
+    model_dir = "./models/alg_{}/env_{}/workers{}".format(args.alg_name, args.env_name, size)
     model_file_name = 'alg_{}_env_{}_reward_step_{}_actor_seed{}_time{}.pth.tar'.format(args.alg_name, 
                         args.env_name, args.reward_step, args.seed, start_time)
     model_full_name = os.path.join(model_dir, model_file_name)
@@ -137,7 +137,7 @@ if __name__ == "__main__":
                         help='number of batch size (default: 1000)')
     parser.add_argument('--episodes', type=int, default=1000, metavar='N',
                         help='number of experiment episodes(default: 1000)')
-    parser.add_argument('--reward_step', type=int, default=0, metavar='N',
+    parser.add_argument('--reward_step', type=int, nargs='+', default=0, metavar='N',
                         help='the unit of reward step(default: 0)')
     parser.add_argument('--device', default='cpu', metavar='G',
                         help='device (default: cpu)')
@@ -151,11 +151,11 @@ if __name__ == "__main__":
                         help='rank of this node')
     args = parser.parse_args()
 
-    logdir = "./logs/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg, args.env_name, args.reward_step, args.workers)
+    logdir = "./logs/alg_{}/env_{}/workers{}".format(args.alg, args.env_name, args.workers)
     if not os.path.exists(logdir):
         os.makedirs(logdir)
 
-    model_dir = "./models/alg_{}/env_{}_reward_step_{}/workers{}".format(args.alg, args.env_name, args.reward_step, args.workers)
+    model_dir = "./models/alg_{}/env_{}/workers{}".format(args.alg, args.env_name, args.workers)
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
 
@@ -166,7 +166,10 @@ if __name__ == "__main__":
 
     start_rank = args.node_rank * size // args.node_size
     end_rank = (args.node_rank + 1) * size // args.node_size
+    num_reward_step = len(args.reward_step)
+
     for rank in range(start_rank, end_rank):
+        reward_step = args.reward_step[rank % num_reward_step]
         alg_args = Args(args.alg,       # alg_name
                     args.env_name,      # env_name
                     args.device,        # device
@@ -184,7 +187,7 @@ if __name__ == "__main__":
                     3e-4,               # pi_lr
                     1e-3,               # value_lr
                     1.0,                # init_std
-                    args.reward_step,   # reward_step
+                    reward_step,        # reward_step
                     args.master_addr,   # master_addr
                     args.master_port)   # master_port
         p = Process(target=parallel_run, args=(start_time, rank, size, run, alg_args, backend))
