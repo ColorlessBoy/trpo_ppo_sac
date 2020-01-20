@@ -17,7 +17,7 @@ do
                                     --reward_step 0 1 2 3 \
                                     --master_addr 10.214.192.126 \
                                     --node_size 2 \
-                                    --node_rank 1
+                                    --node_rank 0
         done
         for alg in local_ppo global_ppo ;
         do
@@ -32,7 +32,7 @@ do
                                     --reward_step 0 1 2 3 \
                                     --master_addr 10.214.192.126 \
                                     --node_size 2 \
-                                    --node_rank 1
+                                    --node_rank 0
         done
     done
 done
