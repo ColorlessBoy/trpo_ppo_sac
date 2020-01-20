@@ -6,13 +6,13 @@ import argparse
 import scikits.bootstrap as sci
 import numpy as np
 
-def load_dir(path, keyword='env'):
+def load_dir(path, keyword='env', keyword2=''):
     file_list = os.listdir(path)
     pd_dict = pd.DataFrame()
     # Dir only includes csvs
     i = 0
     for file in file_list:
-        if keyword in file:
+        if keyword in file and keyword2 in file:
             full_path = os.path.join(path, file)
             data = pd.read_csv(full_path)
             if i == 0:
@@ -27,9 +27,10 @@ def load_dir(path, keyword='env'):
 
 
 parser = argparse.ArgumentParser(description='Plot experiment results')
-parser.add_argument('--alg_list', nargs='+', help='algorimthms to plot')
+parser.add_argument('--alg_list', default='sac', nargs='+', help='algorimthms to plot')
 parser.add_argument('--env_name', default='HalfCheetah-v2', type=str, help='env-name')
 parser.add_argument('--keywords', default='train', type=str, nargs='+', help="keywords of file's name")
+parser.add_argument('--steps', default=0, type=int, help="the number of steps")
 
 args = parser.parse_args()
 
@@ -45,11 +46,12 @@ plt.ylabel('Average return', fontsize=35)
 plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
+keyword2 = '' if args.steps == 0 else 'steps{}'.format(args.steps)
 for keyword in args.keywords:
     alg_pd_dict = {}
     for alg in args.alg_list:
         path = './logs/alg_{}/env_{}'.format(alg, args.env_name)
-        alg_pd_dict[alg] = load_dir(path, keyword)
+        alg_pd_dict[alg] = load_dir(path, keyword, keyword2)
     #plot
     for alg in args.alg_list:
         plt.plot(alg_pd_dict[alg]['step'], alg_pd_dict[alg]['average_reward'], label=alg+'_'+keyword)

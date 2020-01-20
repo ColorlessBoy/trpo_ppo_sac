@@ -6,7 +6,7 @@ from utils import soft_update
 
 class SACNP(object):
     def __init__(self, v_net, q1_net, q2_net, pi_net, vt_net, 
-                gamma=0.99, alpha=0.2, lm = 1,
+                gamma=0.99, alpha=0.2, lm = 1e-4,
                 v_lr=1e-3, q_lr=1e-3, pi_lr=1e-3, vt_lr = 0.005,
                 device=torch.device('cpu')):
         # nets
@@ -56,6 +56,7 @@ class SACNP(object):
                     new_loss_grad[prev_ind:prev_ind + flat_size].view(param.size())
                 prev_ind += flat_size
             net_optim.step()
+        print(loss_list_1)
 
         return loss_list_1
 
@@ -96,9 +97,8 @@ class SACNP(object):
             loss_grad_list.append(grad)
         return loss_grad_list
 
-    def get_ht_grad_list(self, loss_list, net_list, xi_list, scale=1e-4):
+    def get_ht_grad_list(self, loss_list, net_list, xi_list, scale=1e-6):
         loss_grad_list = self.get_loss_grad_list(loss_list, net_list, create_graph=True)
-
         loss_for_ht_grad_list = 0.0
         for loss_grad, xi in zip(loss_grad_list, xi_list):
             loss_for_ht_grad_list += loss_grad @ xi * scale # loss are too big

@@ -38,7 +38,18 @@ def run(args):
         activation=args.activation, output_activation=args.output_activation).to(device)
     vt_net = ValueNetwork(state_size, args.hidden_sizes,
         activation=args.activation).to(device)
-    hard_update(vt_net, v_net)
+
+    # hard_update(vt_net, v_net)
+    pi_path = '/home/peng/Documents/python/RL/trpo_ppo_sac/sac/models/alg_sac/env_HalfCheetah-v2/pi_net_alg_sac_env_HalfCheetah-v2_batch100_seed0_step300000_time1579368167.1438684.pth.tar'
+    q1_path = '/home/peng/Documents/python/RL/trpo_ppo_sac/sac/models/alg_sac/env_HalfCheetah-v2/q1_net_alg_sac_env_HalfCheetah-v2_batch100_seed0_step300000_time1579368167.1428776.pth.tar'
+    q2_path = '/home/peng/Documents/python/RL/trpo_ppo_sac/sac/models/alg_sac/env_HalfCheetah-v2/q2_net_alg_sac_env_HalfCheetah-v2_batch100_seed0_step300000_time1579368167.1433735.pth.tar'
+    v_path  = '/home/peng/Documents/python/RL/trpo_ppo_sac/sac/models/alg_sac/env_HalfCheetah-v2/v_net_alg_sac_env_HalfCheetah-v2_batch100_seed0_step300000_time1579368167.1420517.pth.tar'
+    vt_path = '/home/peng/Documents/python/RL/trpo_ppo_sac/sac/models/alg_sac/env_HalfCheetah-v2/vt_net_alg_sac_env_HalfCheetah-v2_batch100_seed0_step300000_time1579368167.1443515.pth.tar'
+    pi_net.load_state_dict(torch.load(pi_path))
+    q1_net.load_state_dict(torch.load(q1_path))
+    q2_net.load_state_dict(torch.load(q2_path))
+    v_net.load_state_dict(torch.load(v_path))
+    vt_net.load_state_dict(torch.load(vt_path))
 
     env_sampler = EnvSampler(env, args.max_episode_length)
 
@@ -75,8 +86,30 @@ def run(args):
             action = pi_net.get_mean_action(state)
         return action.cpu().numpy()[0]
 
+#   sac = SAC(v_net, q1_net, q2_net, pi_net, vt_net,
+#               gamma=0.99, alpha=0.2,
+#               v_lr=1e-3, q_lr=1e-3, pi_lr=1e-3, vt_lr = args.vt_lr,
+#               device=device)
+
+#   trajectory = 0
+    warm_steps = 500000
+#   for step in range(1, warm_steps+1):
+#       done, episode_reward = env_sampler.addSample(get_action)
+#       batch = env_sampler.sample(args.batch_size)
+#       losses = sac.update(*batch)
+
+#       if done:
+#           trajectory += 1
+
+#       test_reward = None
+#       test_nets = None
+#       if done or step == args.total_steps:
+#           if trajectory % args.test_frequency == 0 or step == args.total_steps:
+#               test_reward = env_sampler.test(get_mean_action, 10)
+#           yield (step, episode_reward, *losses, test_reward, test_nets)
+
     trajectory = 0
-    for step in range(1, args.total_steps+1):
+    for step in range(warm_steps+1, warm_steps+args.total_steps+1):
         done, episode_reward = env_sampler.addSample(get_action)
         if args.alg_name == 'sac':
             batch = env_sampler.sample(args.batch_size)
@@ -89,14 +122,13 @@ def run(args):
             trajectory += 1
 
         test_reward = None
-        test_pi_net = None
+        test_nets = None
         if done or step == args.total_steps:
             if trajectory % args.test_frequency == 0 or step == args.total_steps:
                 test_reward = env_sampler.test(get_mean_action, 10)
-            if trajectory % args.model_save_frequency == 0 or step == args.total_steps:
-                test_pi_net = pi_net
-            yield (step, episode_reward, *losses, test_reward, test_pi_net)
-
+            if step == args.total_steps:
+                test_nets = (v_net, q1_net, q2_net, pi_net, vt_net)
+            yield (step, episode_reward, *losses, test_reward, test_nets)
 
 # The properties of args:
 # 0. alg_name (default: sac)
@@ -142,7 +174,7 @@ if __name__ == '__main__':
                         help='name of environment name (default: HalfCheetah-v2)')
     parser.add_argument('--device', default='cpu', metavar='G',
                         help='device (default cpu)')
-    parser.add_argument('--total_steps', type=int, default=1000000, metavar='N',
+    parser.add_argument('--total_steps', type=int, default=100000, metavar='N',
                         help='total_steps (default 100000)')
     parser.add_argument('--test_frequency', type=int, default=10, metavar='N',
                         help='test_frequency (default 10)')
@@ -169,19 +201,19 @@ if __name__ == '__main__':
 
     # Train Dir
     train_logdir = "./logs/alg_{}/env_{}".format(alg_args.alg_name, alg_args.env_name)
-    file_name = 'train_alg_{}_env_{}_batch{}_seed{}_time{}.csv'.format(alg_args.alg_name, alg_args.env_name, alg_args.batch_size, alg_args.seed, time())
+    file_name = 'train_alg_{}_env_{}_batch{}_seed{}_total_steps{}_time{}.csv'.format(alg_args.alg_name, 
+                alg_args.env_name, alg_args.batch_size, alg_args.seed, alg_args.total_steps, time())
     if not os.path.exists(train_logdir):
         os.makedirs(train_logdir)
     full_name = os.path.join(train_logdir, file_name)
-
     csvfile = open(full_name, 'w')
     writer = csv.writer(csvfile)
     writer.writerow(['step', 'reward'])
 
     # Test Dir
     test_logdir = "./logs/alg_{}/env_{}".format(alg_args.alg_name, alg_args.env_name)
-    test_file_name = 'test_alg_{}_env_{}_batch{}_seed{}_time{}.csv'.format(alg_args.alg_name, 
-                    alg_args.env_name, alg_args.batch_size, alg_args.seed, time())
+    test_file_name = 'test_alg_{}_env_{}_batch{}_seed{}_total_steps{}_time{}.csv'.format(alg_args.alg_name, 
+                    alg_args.env_name, alg_args.batch_size, alg_args.seed, alg_args.total_steps, time())
     if not os.path.exists(test_logdir):
         os.makedirs(test_logdir)
     test_full_name = os.path.join(test_logdir, test_file_name)
@@ -196,7 +228,7 @@ if __name__ == '__main__':
     
     start_time = time()
 
-    for step, reward, q1_loss, q2_loss, pi_loss, v_loss, vt_loss, test_reward, pi_net in run(alg_args):
+    for step, reward, q1_loss, q2_loss, pi_loss, v_loss, vt_loss, test_reward, test_nets in run(alg_args):
         writer.writerow([step, reward])
         print("Step {}: Reward = {:>10.6f}, q1_loss = {:>8.6f}, q2_loss = {:>8.6f}, pi_loss = {:>8.6f}, v_loss = {:>8.6f}, vt_loss = {:>8.6f}".format(
             step, reward, q1_loss, q2_loss, pi_loss, v_loss, vt_loss
@@ -205,10 +237,12 @@ if __name__ == '__main__':
         if test_reward is not None:
             test_writer.writerow([step, test_reward])
             print("Step {}: Test reward = {}".format(step, test_reward))
-        if pi_net is not None:
-            modelfile = "alg_{}_env_{}_batch{}_seed{}_step{}_time{}.pth.tar".format(alg_args.alg_name, 
-                    alg_args.env_name, alg_args.batch_size, alg_args.seed, step, time())
-            model_full_name = os.path.join(modeldir, modelfile)
-            torch.save(pi_net.state_dict(), model_full_name)
+        if test_nets is not None:
+            nets_name = ('v_net', 'q1_net', 'q2_net', 'pi_net', 'vt_net')
+            for name, net in zip(nets_name, test_nets):
+                modelfile = "{}_alg_{}_env_{}_batch{}_seed{}_step{}_time{}.pth.tar".format(name, alg_args.alg_name, 
+                        alg_args.env_name, alg_args.batch_size, alg_args.seed, step, time())
+                model_full_name = os.path.join(modeldir, modelfile)
+                torch.save(net.state_dict(), model_full_name)
 
     print("Total time: {}s.".format(time() - start_time))
