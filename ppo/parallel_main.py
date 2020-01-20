@@ -170,10 +170,11 @@ if __name__ == "__main__":
 
     for rank in range(start_rank, end_rank):
         reward_step = args.reward_step[rank % num_reward_step]
+        seed = args.seed + rank / num_reward_step
         alg_args = Args(args.alg,       # alg_name
                     args.env_name,      # env_name
                     args.device,        # device
-                    args.seed+rank,     # seed
+                    seed,               # seed
                     (64, 64),           # hidden_sizes
                     args.episodes,      # episodes
                     1000,               # max_episode_step
