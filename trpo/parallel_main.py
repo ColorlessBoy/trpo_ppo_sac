@@ -168,7 +168,7 @@ if __name__ == "__main__":
                         help='number of batch size (default: 1000)')
     parser.add_argument('--episodes', type=int, default=1000, metavar='N',
                         help='number of experiment episodes(default: 1000)')
-    parser.add_argument('--reward_step', type=int, nargs='+', default=0, metavar='N',
+    parser.add_argument('--reward_step', type=int, nargs='+', default=(0,), metavar='N',
                         help='the unit of reward step (default: 0)')
     parser.add_argument('--master_addr', default='127.0.0.1', metavar='G',
                         help="master node's ip address")
