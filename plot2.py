@@ -29,7 +29,7 @@ def load_dir(path, keyword='', keyword2=''):
 parser = argparse.ArgumentParser(description='Plot experiment results')
 parser.add_argument('--alg_list', default='sac', nargs='+', help='algorimthms to plot')
 parser.add_argument('--env_name', default='HalfCheetah-v2', type=str, help='env-name')
-parser.add_argument('--keywords', default='train', type=str, nargs='+', help="keywords of file's name")
+parser.add_argument('--keywords', default=('env',), type=str, nargs='+', help="keywords of file's name")
 parser.add_argument('--keyword', default='', type=str, help="keywords for all algorithms")
 parser.add_argument('--workers', default=2, type=int, help="the number of workers")
 
