@@ -76,11 +76,14 @@ class EnvSampler(object):
 
         return False, self.episode_reward
     
-    def addSamples(self, steps):
+    def addSamples(self, steps, get_action=None):
         # Warmup the memory.
         self.env_init()
         for _ in range(steps):
-            action = self.env.action_space.sample()
+            if get_action:
+                action = get_action(self.state)
+            else:
+                action = self.env.action_space.sample()
             action_ = self._action_encode(action)
             next_state, reward, self.done, _ = self.env.step(action) 
             mask = 1.0
