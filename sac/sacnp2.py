@@ -6,7 +6,7 @@ from utils import soft_update
 
 class SACNP2(object):
     def __init__(self, v_net, q1_net, q2_net, pi_net, vt_net, 
-                gamma=0.99, alpha=0.2, lm = 1e-4,
+                gamma=0.99, alpha=0.2, lm = 1,
                 v_lr=1e-3, q_lr=1e-3, pi_lr=1e-3, vt_lr = 0.005,
                 device=torch.device('cpu')):
         # nets
@@ -55,7 +55,7 @@ class SACNP2(object):
 
         for net, net_optim, loss_grad, at_grad in zip(net_list, net_optim_list, loss_grad_list_1, at_grad_list):
             prev_ind = 0
-            new_loss_grad = loss_grad + self.lm * sign * at_grad
+            new_loss_grad = loss_grad + sign * at_grad
             for param in net.parameters():
                 flat_size = param.numel()
                 param.grad = \
@@ -77,7 +77,9 @@ class SACNP2(object):
         pi_loss = torch.mean(log_pi_action - q / self.alpha)
 
         # V-Loss
-        v_target = q - self.alpha * log_pi_action
+        pi_action_v, log_pi_action_v = self.pi_net.select_action(state)
+        q_v = torch.min(self.q1_net(state, pi_action_v), self.q2_net(state, pi_action_v))
+        v_target = q_v - self.alpha * log_pi_action_v
         v = self.v_net(state)
         v_loss = F.mse_loss(v, v_target)
 
@@ -92,6 +94,8 @@ class SACNP2(object):
         grads = torch.autograd.grad(loss, net.parameters(), 
                                     create_graph=create_graph, retain_graph=retain_graph)
         loss_grad = torch.cat([grad.contiguous().view(-1) for grad in grads])
+        # grad normalization
+        loss_grad = loss_grad / (loss_grad.norm().clone().detach() + 1e-6)
         return loss_grad
     
     def get_loss_grad_list(self, loss_list, net_list, create_graph=False, retain_graph=None):
@@ -101,12 +105,12 @@ class SACNP2(object):
             loss_grad_list.append(grad)
         return loss_grad_list
 
-    def get_ht_grad_list(self, loss_list, net_list, xi_list, scale=1e-6):
+    def get_ht_grad_list(self, loss_list, net_list, xi_list):
         loss_grad_list = self.get_loss_grad_list(loss_list, net_list, create_graph=True)
 
         loss_for_ht_grad_list = 0.0
         for loss_grad, xi in zip(loss_grad_list, xi_list):
-            loss_for_ht_grad_list += loss_grad @ xi * scale # loss are too big
+            loss_for_ht_grad_list += loss_grad @ xi
 
         ht_grad_list = []
         for net in net_list:
@@ -115,7 +119,7 @@ class SACNP2(object):
 
         return tuple(ht_grad_list)
         
-    def get_h_grad_list(self, loss_list, net_list, xi_list, scale=1e-6):
+    def get_h_grad_list(self, loss_list, net_list, xi_list):
         loss_sum = 0.0
         for loss in loss_list:
             loss_sum += loss
@@ -126,7 +130,7 @@ class SACNP2(object):
             loss_for_h_grad = 0.0
             for net, xi in zip(net_list, xi_list):
                 grad = self.get_loss_grad(loss, net, create_graph=True)
-                loss_for_h_grad += grad @ xi * scale
+                loss_for_h_grad += grad @ xi
             loss_for_h_grad_list.append(loss_for_h_grad)
         
         h_grad_list = self.get_loss_grad_list(loss_for_h_grad_list, net_list, retain_graph=True)

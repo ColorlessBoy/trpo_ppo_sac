@@ -2,11 +2,9 @@ import torch
 from torch.optim import Adam, SGD
 import torch.nn.functional as F
 
-from utils import soft_update
-
-class SACNP(object):
+class SAC2(object):
     def __init__(self, v_net, q1_net, q2_net, pi_net, vt_net, 
-                gamma=0.99, alpha=0.2, lm=1,
+                gamma=0.99, alpha=0.2,
                 v_lr=1e-3, q_lr=1e-3, pi_lr=1e-3, vt_lr=0.005,
                 device=torch.device('cpu')):
         # nets
@@ -14,7 +12,7 @@ class SACNP(object):
             v_net, q1_net, q2_net, pi_net, vt_net
 
         # hyperparameters
-        self.gamma, self.alpha, self.lm = gamma, alpha, lm
+        self.gamma, self.alpha = gamma, alpha
 
         # device
         self.device = device
@@ -26,7 +24,7 @@ class SACNP(object):
         self.pi_optim = Adam(self.pi_net.parameters(), lr = pi_lr)
         self.vt_optim = SGD(self.vt_net.parameters(), lr = vt_lr)
 
-    def update(self, batch1, batch2):
+    def update(self, batch1):
         def to_device(batch):
             state  = torch.FloatTensor(batch[0]).to(self.device)
             action = torch.FloatTensor(batch[1]).to(self.device)
@@ -42,20 +40,16 @@ class SACNP(object):
             self.vt_optim.zero_grad()
         
         batch1 = to_device(batch1) 
-        batch2 = to_device(batch2)
 
         net_list = (self.q1_net, self.q2_net, self.pi_net, self.v_net, self.vt_net)
         net_optim_list = (self.q1_optim, self.q2_optim, self.pi_optim, self.v_optim, self.vt_optim)
 
-        loss_list_1 = self.get_loss_list(*batch1)
-        loss_grad_list_1 = self.get_loss_grad_list(loss_list_1, net_list)
+        loss_list = self.get_loss_list(*batch1)
+        loss_grad_list = self.get_loss_grad_list(loss_list, net_list)
 
-        loss_list_2 = self.get_loss_list(*batch2)
-        ht_grad_list = self.get_ht_grad_list(loss_list_2, net_list, loss_grad_list_1)
-
-        for net, net_optim, loss_grad, ht_grad in zip(net_list, net_optim_list, loss_grad_list_1, ht_grad_list):
+        for net, net_optim, loss_grad in zip(net_list, net_optim_list, loss_grad_list):
             prev_ind = 0
-            new_loss_grad = loss_grad + self.lm * ht_grad
+            new_loss_grad = loss_grad
             for param in net.parameters():
                 flat_size = param.numel()
                 param.grad = \
@@ -63,7 +57,7 @@ class SACNP(object):
                 prev_ind += flat_size
             net_optim.step()
 
-        return loss_list_1
+        return loss_list
 
     def get_loss_list(self, state, action, reward, nstate, mask):
         q_target = reward + self.gamma * mask * self.vt_net(nstate)
@@ -95,8 +89,8 @@ class SACNP(object):
         grads = torch.autograd.grad(loss, net.parameters(), 
                                     create_graph=create_graph, retain_graph=retain_graph)
         loss_grad = torch.cat([grad.contiguous().view(-1) for grad in grads])
-        # grad normalization
-        loss_grad = loss_grad / (loss_grad.norm().clone().detach() + 1e-6)
+        print(loss_grad.norm())
+        loss_grad = loss_grad / (loss_grad.norm() + 1e-6)
         return loss_grad
     
     def get_loss_grad_list(self, loss_list, net_list, create_graph=False):
@@ -105,18 +99,3 @@ class SACNP(object):
             grad = self.get_loss_grad(loss, net, create_graph)
             loss_grad_list.append(grad)
         return loss_grad_list
-
-    def get_ht_grad_list(self, loss_list, net_list, xi_list):
-        loss_grad_list = self.get_loss_grad_list(loss_list, net_list, create_graph=True)
-        loss_for_ht_grad_list = 0.0
-        for loss_grad, xi in zip(loss_grad_list, xi_list):
-            loss_for_ht_grad_list += loss_grad @ xi
-
-        ht_grad_list = []
-        for i, net in enumerate(net_list):
-            grad = self.get_loss_grad(loss_for_ht_grad_list, net, retain_graph=True)
-            ht_grad_list.append(grad)
-
-        return tuple(ht_grad_list)
-
-
