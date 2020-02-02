@@ -2,11 +2,11 @@
 
 for seed in 0 ;
 do
-    for env_name in Humanoid-v2 ;
+    for env_name in Ant-v2 ;
     do
         for reward_step in 2 ;
         do
-            for alg in global_ppo ;
+            for alg in local_ppo;
             do
                 rm /home/peng/anaconda3/envs/pytorch/lib/python3.6/site-packages/mujoco_py/generated/*.lock
                 cd /home/peng/Documents/trpo_ppo_sac/ppo
