@@ -31,7 +31,7 @@ parser.add_argument('--alg_list', default='sac', nargs='+', help='algorimthms to
 parser.add_argument('--env_name', default='HalfCheetah-v2', type=str, help='env-name')
 parser.add_argument('--keywords', default=('env',), type=str, nargs='+', help="keywords of file's name")
 parser.add_argument('--keyword', default='', type=str, help="keywords for all algorithms")
-parser.add_argument('--workers', default=2, type=int, help="the number of workers")
+parser.add_argument('--workers', default=(2,), type=int, nargs='+', help="the number of workers")
 
 
 args = parser.parse_args()
@@ -48,23 +48,26 @@ plt.ylabel('Average return', fontsize=35)
 plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
-keyword2 = args.keyword
-for keyword in args.keywords:
-    alg_pd_dict = {}
-    for alg in args.alg_list:
-        if 'trpo' in alg:
-            path = './trpo/logs/alg_{}/env_{}/workers{}'.format(alg, args.env_name, args.workers)
-        elif 'ppo' in alg:
-            path = './ppo/logs/alg_{}/env_{}/workers{}'.format(alg, args.env_name, args.workers)
-        alg_pd_dict[alg] = load_dir(path, keyword, keyword2)
-    #plot
-    for alg in args.alg_list:
-        plt.plot(alg_pd_dict[alg]['step'], alg_pd_dict[alg]['average_reward'], label=alg+'_'+keyword)
-        plt.fill_between(alg_pd_dict[alg]['step'], alg_pd_dict[alg]["low"] , alg_pd_dict[alg]["high"], alpha=0.2)
+workers_tag = ''
+for workers in args.workers:
+    workers_tag += '_workers{}'.format(workers)
+    keyword2 = args.keyword
+    for keyword in args.keywords:
+        alg_pd_dict = {}
+        for alg in args.alg_list:
+            if 'trpo' in alg:
+                path = './trpo/logs/alg_{}/env_{}/workers{}'.format(alg, args.env_name, workers)
+            elif 'ppo' in alg:
+                path = './ppo/logs/alg_{}/env_{}/workers{}'.format(alg, args.env_name, workers)
+            alg_pd_dict[alg] = load_dir(path, keyword, keyword2)
+        #plot
+        for alg in args.alg_list:
+            plt.plot(alg_pd_dict[alg]['step'], alg_pd_dict[alg]['average_reward'], label=alg+'_'+keyword+'_workers{}'.format(workers))
+            plt.fill_between(alg_pd_dict[alg]['step'], alg_pd_dict[alg]["low"] , alg_pd_dict[alg]["high"], alpha=0.2)
 
 ax = plt.subplot(111)
 ax.xaxis.offsetText.set_fontsize(30)
 ax.yaxis.offsetText.set_fontsize(30)
-plt.legend(fontsize = 'xx-large', loc = 'upper left')
-plt.savefig('./{}.pdf'.format(args.env_name+'_'+'_'.join(args.keywords)))
+plt.legend(fontsize = 'xx-large', loc = 'lower right')
+plt.savefig('./{}.pdf'.format(args.env_name+'_' + '_'.join(args.alg_list) +'_'+'_'.join(args.keywords)+workers_tag))
 #plt.show()
