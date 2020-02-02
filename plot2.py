@@ -68,6 +68,10 @@ for workers in args.workers:
 ax = plt.subplot(111)
 ax.xaxis.offsetText.set_fontsize(30)
 ax.yaxis.offsetText.set_fontsize(30)
+<<<<<<< HEAD
 plt.legend(fontsize = 'xx-large', loc = 'lower right')
+=======
+plt.legend(fontsize = 'xx-large', loc = 'upper left')
+>>>>>>> 9d55a47291c703cd0f76217ea1ec8565082e80d1
 plt.savefig('./{}.pdf'.format(args.env_name+'_' + '_'.join(args.alg_list) +'_'+'_'.join(args.keywords)+workers_tag))
 #plt.show()
