@@ -2,7 +2,7 @@
 
 for seed in 0 ; # 100 200 ; 
 do
-    for env_name in Humanoid-v2 ;# HalfCheetah-v2 Walker2d-v2 Ant-v2 Humanoid-v2 Swimmer-v2 HumanoidStandup-v2 Hopper-v2 ;
+    for env_name in HalfCheetah-v2 ;# HalfCheetah-v2 Walker2d-v2 Ant-v2 Humanoid-v2 Swimmer-v2 HumanoidStandup-v2 Hopper-v2 ;
     do
         for alg in local_trpo3 hmtrpo global_trpo ;
         do
