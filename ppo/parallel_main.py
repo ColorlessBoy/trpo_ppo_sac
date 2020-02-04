@@ -6,23 +6,30 @@ import torch.distributed as dist
 from time import time
 import csv
 from collections import namedtuple
+import numpy as np
 
 from utils import EnvSampler
 from models import PolicyNetwork, ValueNetwork
 from local_ppo import LocalPPO
 from global_ppo import GlobalPPO
+from navigation import Navigation2DEnv_FL
 
 def run(rank, size, args):
-    env = gym.make(args.env_name)
+    # 1.Set some necessary seed.
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
+    np.random.seed(args.seed)
+
+    if args.env_name == 'Navigation2DEnv-FL':
+        env = Navigation2DEnv_FL()
+    else:
+        env = gym.make(args.env_name)
+    env.seed(args.seed)
+
     device = args.device
     if device == 'cuda':
         device = 'cuda:{}'.format(rank % torch.cuda.device_count())
     device = torch.device(device)
-
-    # 1.Set some necessary seed.
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
-    env.seed(args.seed)
 
     # 2.Create actor, critic, EnvSampler() and PPO.
     state_size = env.observation_space.shape[0]
@@ -137,7 +144,7 @@ if __name__ == "__main__":
                         help='number of batch size (default: 1000)')
     parser.add_argument('--episodes', type=int, default=1000, metavar='N',
                         help='number of experiment episodes(default: 1000)')
-    parser.add_argument('--reward_step', type=int, nargs='+', default=0, metavar='N',
+    parser.add_argument('--reward_step', type=int, nargs='+', default=(0,), metavar='N',
                         help='the unit of reward step(default: 0)')
     parser.add_argument('--device', default='cpu', metavar='G',
                         help='device (default: cpu)')
@@ -170,7 +177,7 @@ if __name__ == "__main__":
 
     for rank in range(start_rank, end_rank):
         reward_step = args.reward_step[rank % num_reward_step]
-        seed = args.seed + rank / num_reward_step
+        seed = args.seed + rank
         alg_args = Args(args.alg,       # alg_name
                     args.env_name,      # env_name
                     args.device,        # device
