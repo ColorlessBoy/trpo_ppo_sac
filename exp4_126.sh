@@ -1,12 +1,12 @@
 #!/bin/bash
 
-for seed in 0 ;
+for seed in 100 ;
 do
-    for env_name in Ant-v2 ;
+    for env_name in HalfCheetah-v2 ;
     do
-        for reward_step in 2 ;
+        for reward_step in 0 1 ;
         do
-            for alg in global_ppo ;
+            for alg in local_ppo ;
             do
                 rm /home/peng/anaconda3/envs/pytorch/lib/python3.6/site-packages/mujoco_py/generated/*.lock
                 cd /home/peng/Documents/trpo_ppo_sac/ppo
