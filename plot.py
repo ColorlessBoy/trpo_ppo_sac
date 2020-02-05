@@ -62,7 +62,8 @@ for workers in args.workers:
             alg_pd_dict[alg] = load_dir(path, keyword, keyword2)
         #plot
         for alg in args.alg_list:
-            plt.plot(alg_pd_dict[alg]['step'], alg_pd_dict[alg]['average_reward'], label=alg+'_'+keyword+'_workers{}'.format(workers))
+            # plt.plot(alg_pd_dict[alg]['step'], alg_pd_dict[alg]['average_reward'], label=alg+'_'+keyword+'_workers{}'.format(workers))
+            plt.plot(alg_pd_dict[alg]['step'], alg_pd_dict[alg]['average_reward'], label=alg)
             plt.fill_between(alg_pd_dict[alg]['step'], alg_pd_dict[alg]["low"] , alg_pd_dict[alg]["high"], alpha=0.2)
 
 ax = plt.subplot(111)
