@@ -1,10 +1,10 @@
 #!/bin/bash
 
-for seed in 0 ; # 100 200 ; 
+for seed in 100 ;
 do
-    for env_name in HalfCheetah-v2 ;# HalfCheetah-v2 Walker2d-v2 Ant-v2 Humanoid-v2 Swimmer-v2 HumanoidStandup-v2 Hopper-v2 ;
+    for env_name in HalfCheetah-v2 ;
     do
-        for alg in global_ppo ;
+        for alg in local_ppo ;
         do
             rm /home/peng/anaconda3/envs/pytorch/lib/python3.6/site-packages/mujoco_py/generated/*.lock
             cd /home/peng/Documents/trpo_ppo_sac/ppo
