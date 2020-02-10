@@ -5,6 +5,7 @@ from torch.distributions import Categorical, Normal
 import torch.nn.functional as F
 from collections import OrderedDict
 import math
+import numpy as np
 
 def _weight_init(module):
     if isinstance(module, nn.Linear):
@@ -66,7 +67,7 @@ class PolicyNetwork(Network):
         y = pi.rsample()
         # y = pi.sample()
         action = torch.tanh(y)
-        log_pi_action = pi.log_prob(y) - torch.log(1 - action.pow(2) + self.epsilon)
+        log_pi_action = pi.log_prob(y) - 2*(np.log(2) - y - F.softplus(-2*y))
         return action, log_pi_action.sum(axis=1, keepdim=True)
 
     def get_mean_action(self, state):

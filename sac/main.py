@@ -13,6 +13,7 @@ from sac import SAC
 from sacnp import SACNP
 from sacnp2 import SACNP2
 from sac2 import SAC2
+from sac3 import SAC3
 
 def run(args):
     env = gym.make(args.env_name)
@@ -45,22 +46,27 @@ def run(args):
     if args.alg_name == 'sac':
         alg = SAC(v_net, q1_net, q2_net, pi_net, vt_net,
                     gamma=0.99, alpha=0.2,
-                    v_lr=1e-3, q_lr=1e-3, pi_lr=1e-3, vt_lr = args.vt_lr,
+                    v_lr=args.net_lr, q_lr=args.net_lr, pi_lr=args.net_lr, vt_lr = args.vt_lr,
                     device=device)
     elif args.alg_name == 'sacnp':
         alg = SACNP(v_net, q1_net, q2_net, pi_net, vt_net,
                     gamma=0.99, alpha=0.2, lm=0.2,
-                    v_lr=1e-3, q_lr=1e-3, pi_lr=1e-3, vt_lr = args.vt_lr,
+                    v_lr=args.net_lr, q_lr=args.net_lr, pi_lr=args.net_lr, vt_lr = args.vt_lr,
                     device=device)
     elif args.alg_name == 'sacnp2':
         alg = SACNP2(v_net, q1_net, q2_net, pi_net, vt_net,
                     gamma=0.99, alpha=0.2, lm=1,
-                    v_lr=1e-3, q_lr=1e-3, pi_lr=1e-3, vt_lr = args.vt_lr,
+                    v_lr=args.net_lr, q_lr=args.net_lr, pi_lr=args.net_lr, vt_lr = args.vt_lr,
                     device=device)
     elif args.alg_name == 'sac2':
         alg = SAC2(v_net, q1_net, q2_net, pi_net, vt_net,
                     gamma=0.99, alpha=0.2,
-                    v_lr=1e-3, q_lr=1e-3, pi_lr=1e-3, vt_lr = args.vt_lr,
+                    v_lr=args.net_lr, q_lr=args.net_lr, pi_lr=args.net_lr, vt_lr = args.vt_lr,
+                    device=device)
+    elif args.alg_name == 'sac3':
+        alg = SAC3(v_net, q1_net, q2_net, pi_net, vt_net,
+                    gamma=0.99, alpha=0.2,
+                    v_lr=args.net_lr, q_lr=args.net_lr, pi_lr=args.net_lr, vt_lr = args.vt_lr,
                     device=device)
 
     def get_action(state):
@@ -105,7 +111,7 @@ def run(args):
         if args.alg_name == 'sac':
             batch = env_sampler.sample(args.batch_size)
             losses = alg.update(*batch)
-        elif args.alg_name == 'sac2':
+        elif args.alg_name == 'sac2' or args.alg_name == 'sac3':
             batch = env_sampler.sample(args.batch_size)
             losses = alg.update(batch)
         else:
@@ -152,6 +158,7 @@ Args = namedtuple( 'Args',
     'start_steps',
     'seed',
     'vt_lr',
+    'net_lr',
     'test_frequency',
     'model_save_frequency',
     'activation',
@@ -180,6 +187,8 @@ if __name__ == '__main__':
                         help='model save frequency (default 10)')
     parser.add_argument("--load_model", type=bool, help='load model from models/pre_models')
     parser.add_argument("--warm_steps", type=int, default=0, help='warm start steps')
+    parser.add_argument("--vt_lr", type=float, default=1e-3, help="vt net's learning rate")
+    parser.add_argument("--net_lr", type=float, default=1e-3, help="other net's learning rate")
     args = parser.parse_args()
 
     alg_args = Args(
@@ -192,19 +201,20 @@ if __name__ == '__main__':
         1000,             # max_episode_length
         10000,            # start_steps
         args.seed,        # seed
-        0.005,            # vt_lr
+        args.vt_lr,       # vt_lr
+        args.net_lr,      # net_lr
         args.test_frequency,       # test_frequency
         args.model_save_frequency, # model_save_frequency
         torch.relu,       # activation
-        torch.tanh,       # output_activation
+        None,             # output_activation
         args.load_model,  # load pretrained models
         args.warm_steps,  # warm steps
     )
 
     # Train Dir
     train_logdir = "./logs/alg_{}/env_{}".format(alg_args.alg_name, alg_args.env_name)
-    file_name = 'train_alg_{}_env_{}_batch{}_seed{}_total_steps{}_time{}.csv'.format(alg_args.alg_name, 
-                alg_args.env_name, alg_args.batch_size, alg_args.seed, alg_args.total_steps+alg_args.warm_steps, time())
+    file_name = 'train_alg_{}_env_{}_batch{}_seed{}_total_steps{}_net_lr{}_vt_lr{}_time{}.csv'.format(alg_args.alg_name, 
+                alg_args.env_name, alg_args.batch_size, alg_args.seed, alg_args.total_steps+alg_args.warm_steps, alg_args.net_lr, alg_args.vt_lr, time())
     if not os.path.exists(train_logdir):
         os.makedirs(train_logdir)
     full_name = os.path.join(train_logdir, file_name)
@@ -214,8 +224,8 @@ if __name__ == '__main__':
 
     # Test Dir
     test_logdir = "./logs/alg_{}/env_{}".format(alg_args.alg_name, alg_args.env_name)
-    test_file_name = 'test_alg_{}_env_{}_batch{}_seed{}_total_steps{}_time{}.csv'.format(alg_args.alg_name, 
-                    alg_args.env_name, alg_args.batch_size, alg_args.seed, alg_args.total_steps+alg_args.warm_steps, time())
+    test_file_name = 'test_alg_{}_env_{}_batch{}_seed{}_total_steps{}_net_lr{}_vt_lr{}_time{}.csv'.format(alg_args.alg_name, 
+                    alg_args.env_name, alg_args.batch_size, alg_args.seed, alg_args.total_steps+alg_args.warm_steps, alg_args.net_lr, alg_args.vt_lr, time())
     if not os.path.exists(test_logdir):
         os.makedirs(test_logdir)
     test_full_name = os.path.join(test_logdir, test_file_name)
@@ -242,8 +252,8 @@ if __name__ == '__main__':
         if test_nets is not None:
             nets_name = ('v_net', 'q1_net', 'q2_net', 'pi_net', 'vt_net')
             for name, net in zip(nets_name, test_nets):
-                modelfile = "{}_alg_{}_env_{}_batch{}_seed{}_step{}_time{}.pth.tar".format(name, alg_args.alg_name, 
-                        alg_args.env_name, alg_args.batch_size, alg_args.seed, step, time())
+                modelfile = "{}_alg_{}_env_{}_batch{}_seed{}_step{}_net_lr{}_vt_lr{}_time{}.pth.tar".format(name, alg_args.alg_name, 
+                        alg_args.env_name, alg_args.batch_size, alg_args.seed, step, alg_args.net_lr, alg_args.vt_lr, time())
                 model_full_name = os.path.join(modeldir, modelfile)
                 torch.save(net.state_dict(), model_full_name)
 

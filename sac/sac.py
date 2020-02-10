@@ -24,9 +24,7 @@ class SAC(object):
         self.q1_optim = Adam(self.q1_net.parameters(), lr = q_lr )
         self.q2_optim = Adam(self.q2_net.parameters(), lr = q_lr)
         self.pi_optim = Adam(self.pi_net.parameters(), lr = pi_lr)
-        self.vt_optim = SGD(self.vt_net.parameters(),  lr = vt_lr)
-
-        self.vt_lr = vt_lr
+        self.vt_optim = SGD(self.vt_net.parameters(), lr = vt_lr)
 
     def update(self, state, action, reward, nstate, mask):
         state  = torch.FloatTensor(state).to(self.device)
