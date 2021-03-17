@@ -1,5 +1,4 @@
 import gym
-import pybulletgym
 import torch
 import numpy as np
 from torch.multiprocessing import Process
