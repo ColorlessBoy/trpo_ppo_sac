@@ -132,7 +132,6 @@ def parallel_run(rank, size, fn, args, backend='gloo'):
     """ Initialize the distributed environment. """
     os.environ['MASTER_ADDR'] = '127.0.0.1'
     os.environ['MASTER_PORT'] = '29500'
-    os.environ['NCCL_BLOCKING_WAIT'] = "1"
     dist.init_process_group(backend, rank=rank, world_size=size)
 
     alg_args = Args(args.env,       # env_name
@@ -173,7 +172,7 @@ def parallel_run(rank, size, fn, args, backend='gloo'):
 
     for t, reward, len in fn(rank, size, alg_args):
         writer.writerow([t, reward, len])
-        # csvfile.flush()
+        csvfile.flush()
 
     csvfile.close()
 
