@@ -12,8 +12,8 @@ from collections import namedtuple
 from utils import ReplayBuffer, MLPActorCritic
 from gac import GAC
 
-def average_parameters(rank, size, params):
-    for param in params:
+def average_parameters(rank, size, model):
+    for param in model.parameters():
         dist.reduce(param.data, dst=0,  op=dist.ReduceOp.SUM)
         if rank == 0:
             param.data /= size
@@ -99,9 +99,9 @@ def run(rank, size, args):
                 loss_a, loss_c, alpha = gac.update(args.batch_size)
             gac.update_beta()
             print("Rank{} Step {:>10}: loss_actor = {:<22}, loss_critic = {:<22}, alpha = {:<20}, beta = {:<20}".format(rank, t, loss_a, loss_c, alpha, gac.beta))
-            average_parameters(rank, size, gac.actor_critic.actor.parameters())
-            average_parameters(rank, size, gac.actor_critic.critic1.parameters())
-            average_parameters(rank, size, gac.actor_critic.critic2.parameters())
+            average_parameters(rank, size, gac.actor_critic.actor)
+            average_parameters(rank, size, gac.actor_critic.critic1)
+            average_parameters(rank, size, gac.actor_critic.critic2)
 
         # End of epoch handling
         if t >= args.update_after and t % args.steps_per_epoch == 0:
@@ -132,6 +132,7 @@ def parallel_run(rank, size, fn, args, backend='gloo'):
     """ Initialize the distributed environment. """
     os.environ['MASTER_ADDR'] = '127.0.0.1'
     os.environ['MASTER_PORT'] = '29500'
+    os.environ['NCCL_BLOCKING_WAIT'] = "1"
     dist.init_process_group(backend, rank=rank, world_size=size)
 
     alg_args = Args(args.env,       # env_name
@@ -172,7 +173,7 @@ def parallel_run(rank, size, fn, args, backend='gloo'):
 
     for t, reward, len in fn(rank, size, alg_args):
         writer.writerow([t, reward, len])
-        csvfile.flush()
+        # csvfile.flush()
 
     csvfile.close()
 
@@ -202,7 +203,7 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
 
-    logdir = "./logs/gac-dist/{}".format(args.env)
+    logdir = "./data/gac-dist/{}".format(args.env)
     if not os.path.exists(logdir):
         os.makedirs(logdir)
 
