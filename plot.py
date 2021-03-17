@@ -37,8 +37,10 @@ for alg in alg_list:
         path = './ppo/logs/alg_{}/env_{}'.format(alg, env_name)
     elif 'trpo' in alg:
         path = './trpo/logs/alg_{}/env_{}/workers{}'.format(alg, env_name, args.workers)
-    else:
+    elif 'ppo' in alg:
         path = './ppo/logs/alg_{}/env_{}/workers{}'.format(alg, env_name, args.workers)
+    else:
+        path = './logs/gac/{}'.format(env_name)
 
     file_list = os.listdir(path)
     file_list.sort(key=lambda x:x[x.find('time'):])

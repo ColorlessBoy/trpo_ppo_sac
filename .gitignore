@@ -2,3 +2,6 @@
 __pycache__
 *.log
 *.out
+data/
+*.pdf
+logs/
