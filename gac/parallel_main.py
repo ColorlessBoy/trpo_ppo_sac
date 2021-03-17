@@ -102,6 +102,8 @@ def run(rank, size, args):
             average_parameters(rank, size, gac.actor_critic.actor.parameters())
             average_parameters(rank, size, gac.actor_critic.critic1.parameters())
             average_parameters(rank, size, gac.actor_critic.critic2.parameters())
+            average_parameters(rank, size,[gac.actor_critic.obs_mean, gac.actor_critic.obs_std])
+            gac.update_obs_param2()
 
         # End of epoch handling
         if t >= args.update_after and t % args.steps_per_epoch == 0:
