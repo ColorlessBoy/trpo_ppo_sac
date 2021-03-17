@@ -49,14 +49,6 @@ class GAC(object):
         self.target_actor_critic.obs_mean = self.actor_critic.obs_mean
         self.target_actor_critic.obs_std  = self.actor_critic.obs_std
 
-    def update_obs_param2(self):
-        # for state normalization
-        self.replay_buffer.obs_mean = self.actor_critic.obs_mean.cpu().numpy()
-        self.replay_buffer.obs_std = self.actor_critic.obs_std.cpu().numpy()
-        self.replay_buffer.obs_square_mean = self.replay_buffer.obs_std**2 + self.replay_buffer.obs_mean**2
-        self.target_actor_critic.obs_mean = self.actor_critic.obs_mean
-        self.target_actor_critic.obs_std  = self.actor_critic.obs_std
-
     def update(self, batch_size):
         data = self.replay_buffer.sample_batch(batch_size) # normalized by replay buffer
         o, a, r, o2, d = data['obs'], data['act'], data['rew'], data['obs2'], data['done']
