@@ -46,6 +46,7 @@ def run(rank, size, args):
     synchronous_parameters(actor_critic.critic2)
 
     replay_buffer = ReplayBuffer(obs_dim, act_dim, args.buffer_size)
+    obs_mean_params = [torch.from_numpy(replay_buffer.obs_mean), torch.from_numpy(replay_buffer.obs_square_mean)]
     gac = GAC(actor_critic, replay_buffer, device=device,
               alpha_start=args.alpha_start, alpha_min=args.alpha_min, alpha_max=args.alpha_max)
 
@@ -102,8 +103,11 @@ def run(rank, size, args):
             average_parameters(rank, size, gac.actor_critic.actor.parameters())
             average_parameters(rank, size, gac.actor_critic.critic1.parameters())
             average_parameters(rank, size, gac.actor_critic.critic2.parameters())
-            average_parameters(rank, size, [gac.actor_critic.obs_mean, gac.actor_critic.obs_std])
-            gac.update_obs_param2()
+            
+            obs_mean_params = [torch.from_numpy(replay_buffer.obs_mean).to(device), torch.from_numpy(replay_buffer.obs_square_mean).to(device)]
+            average_parameters(rank, size, obs_mean_params)
+            replay_buffer.obs_mean = obs_mean_params[0].cpu().numpy()
+            replay_buffer.obs_square_mean = obs_mean_params[1].cpu().numpy()
 
         # End of epoch handling
         if t >= args.update_after and t % args.steps_per_epoch == 0:
