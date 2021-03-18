@@ -12,12 +12,23 @@ from collections import namedtuple
 from utils import ReplayBuffer, MLPActorCritic
 from gac import GAC
 
+weights=np.array([[0.6, 0.2, 0,   0,    0,      0,    0.2,  0],
+                  [0.2, 0.2, 0.2, 0,    0,      0,    0.2,  0.2],
+                  [0,   0.2, 0.8, 0,    0,      0,    0,    0],
+                  [0,   0,   0,   0.55, 0,      0.25, 0.20, 0],
+                  [0,   0,   0,   0,    0.4167, 0.25, 0,    0.3333],
+                  [0,   0,   0,   0.25, 0.25,   0.3,  0.2,  0],
+                  [0.2, 0.2, 0,   0.2,  0,      0.2,  0.2,  0],
+                  [0,   0.2, 0,   0,    0.3333, 0,    0,    0.4667]])
+
 def average_parameters(rank, size, params):
     for param in params:
-        dist.reduce(param.data, dst=0,  op=dist.ReduceOp.SUM)
-        if rank == 0:
-            param.data /= size
-        dist.broadcast(param.data, src=0)
+        tensor_list = [torch.empty_like(param.data) for _ in range(size)]
+        dist.all_gather(tensor_list, param.data)
+        param.data.mul_(weights[rank][rank])
+        for n, tensor in enumerate(tensor_list):
+            if n != rank and weights[rank][n] > 0:
+                param.data.add_(weights[rank][n] * tensor)
 
 def synchronous_parameters(model):
     for param in model.parameters():
@@ -160,7 +171,7 @@ def parallel_run(rank, size, fn, args, backend='gloo'):
                 args.alpha_min,
                 args.alpha_max)
 
-    logdir = "./data/gac-parallel/{}/{}-rank{}-seed{}-{}".format(alg_args.env_name, alg_args.env_name, rank, alg_args.seed, time())
+    logdir = "./data/gac-distributed/{}/{}-rank{}-seed{}-{}".format(alg_args.env_name, alg_args.env_name, rank, alg_args.seed, time())
     if not os.path.exists(logdir):
         os.makedirs(logdir)
 
@@ -206,13 +217,13 @@ if __name__ == "__main__":
                         help='alpha_max (default: 1.5)')
     parser.add_argument('--agent', type=int, default=8, metavar='N',
                         help='number of agents (default: 8)')
-    parser.add_argument('--alg', default='gac-parallel', metavar='G',
+    parser.add_argument('--alg', default='gac-distributed', metavar='G',
                         help='algorithm (default gac-parallel')
 
     
     args = parser.parse_args()
 
-    logdir = "./data/gac-parallel/{}".format(args.env)
+    logdir = "./data/gac-distributed/{}".format(args.env)
     if not os.path.exists(logdir):
         os.makedirs(logdir)
 
