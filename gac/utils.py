@@ -54,7 +54,7 @@ class ReplayBuffer:
         return {k: torch.as_tensor(v, dtype=torch.float32) for k,v in batch.items()}
     
     def obs_encoder(self, o):
-        return ((np.array(o) - self.obs_mean)/(self.obs_std + 1e-4)).clip(-self.obs_limit, self.obs_limit)
+        return ((np.array(o) - self.obs_mean)/(self.obs_std + 1e-8)).clip(-self.obs_limit, self.obs_limit)
 
 # ==============================================================================
 # Model For Actor Critic
