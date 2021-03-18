@@ -12,8 +12,8 @@ from collections import namedtuple
 from utils import ReplayBuffer, MLPActorCritic
 from gac import GAC
 
-def average_parameters(rank, size, model):
-    for param in model.parameters():
+def average_parameters(rank, size, params):
+    for param in params:
         dist.reduce(param.data, dst=0,  op=dist.ReduceOp.SUM)
         if rank == 0:
             param.data /= size
@@ -99,9 +99,11 @@ def run(rank, size, args):
                 loss_a, loss_c, alpha = gac.update(args.batch_size)
             gac.update_beta()
             print("Rank{} Step {:>10}: loss_actor = {:<22}, loss_critic = {:<22}, alpha = {:<20}, beta = {:<20}".format(rank, t, loss_a, loss_c, alpha, gac.beta))
-            average_parameters(rank, size, gac.actor_critic.actor)
-            average_parameters(rank, size, gac.actor_critic.critic1)
-            average_parameters(rank, size, gac.actor_critic.critic2)
+            average_parameters(rank, size, gac.actor_critic.actor.parameters())
+            average_parameters(rank, size, gac.actor_critic.critic1.parameters())
+            average_parameters(rank, size, gac.actor_critic.critic2.parameters())
+            average_parameters(rank, size, [gac.actor_critic.obs_mean, gac.actor_critic.obs_std])
+            gac.update_obs_param2()
 
         # End of epoch handling
         if t >= args.update_after and t % args.steps_per_epoch == 0:
