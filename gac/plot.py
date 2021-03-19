@@ -68,8 +68,8 @@ def get_datasets(logdir, condition=None):
             try:
                 config_path = open(os.path.join(root,'config.json'))
                 config = json.load(config_path)
-                if 'exp_name' in config:
-                    exp_name = config['exp_name']
+                if 'alg_name' in config:
+                    exp_name = config['alg_name']
             except:
                 print('No file named config.json')
             condition1 = condition or exp_name or 'exp'
