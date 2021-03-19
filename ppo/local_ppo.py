@@ -15,11 +15,13 @@ class LocalPPO(PPO):
                 target_kl=0.01,
                 device=torch.device("cpu"),
                 pi_lr=3e-4,
-                v_lr=1e-3):
+                v_lr=1e-3,
+                ent_coef=0.02,
+                policy_coef=10.0):
         super(LocalPPO, self).__init__(actor, critic, clip, gamma, 
                                         tau, pi_steps_per_update, 
                                         value_steps_per_update, 
-                                        target_kl, device, pi_lr, v_lr)
+                                        target_kl, device, pi_lr, v_lr, ent_coef, policy_coef)
         self.synchronous_parameters(self.actor)
         self.synchronous_parameters(self.critic)
 

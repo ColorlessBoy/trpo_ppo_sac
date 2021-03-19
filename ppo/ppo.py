@@ -16,7 +16,9 @@ class PPO(object):
                 target_kl=0.01,
                 device=torch.device("cpu"),
                 pi_lr=3e-4,
-                v_lr=1e-3):
+                v_lr=1e-3,
+                ent_coef=0.02,
+                policy_coef=10.0):
         self.actor = actor
         self.critic = critic
         self.actor_optim = Adam(self.actor.parameters(), lr=pi_lr)
@@ -28,6 +30,8 @@ class PPO(object):
         self.value_steps_per_update = value_steps_per_update
         self.target_kl = target_kl
         self.device = device
+        self.ent_coef = ent_coef
+        self.policy_coef = policy_coef
     
     def getGAE(self, state, reward, mask):
         # On CPU.
@@ -80,7 +84,7 @@ class PPO(object):
             log_action_probs, e = self.actor.get_log_prob(state, action)
             ratio = torch.exp(log_action_probs - old_log_action_probs)
             ratio2 = ratio.clamp(1 - self.clip, 1 + self.clip)
-            actor_loss = -0.02 * e.mean() - torch.min(ratio * advantage, ratio2 * advantage).mean()
+            actor_loss = - self.ent_coef * e.mean() - self.policy_coef * torch.min(ratio * advantage, ratio2 * advantage).mean()
             actor_loss.backward()
 
             self.actor_optim.step()
