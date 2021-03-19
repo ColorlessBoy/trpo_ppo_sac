@@ -12,7 +12,7 @@ def _weight_init(module):
         module.bias.data.zero_()
 
 class Network(nn.Module):
-    def __init__(self, input_size, output_size, hidden_sizes=(64, 64), activation=torch.tanh, output_activation=None):
+    def __init__(self, input_size, output_size, hidden_sizes=(64, 64), activation=nn.LeakyReLU(negative_slope=0.2), output_activation=None):
         super().__init__()
         self.activation = activation
         self.output_activation = output_activation
@@ -36,7 +36,7 @@ class Network(nn.Module):
 # We require that action is in [-1, 1]^n
 class PolicyNetwork(Network):
     def __init__(self, input_size, output_size, hidden_sizes=(64, 64),
-                 activation=torch.tanh, output_activation=None, init_std=1.0, min_std=1e-6):
+                 activation=nn.LeakyReLU(negative_slope=0.2), output_activation=None, init_std=1.0, min_std=1e-6):
 
         super(PolicyNetwork, self).__init__(input_size, output_size, hidden_sizes, activation, output_activation)
 
@@ -66,7 +66,7 @@ class PolicyNetwork(Network):
         return action
 
 class ValueNetwork(Network):
-    def __init__(self, input_size, hidden_sizes=(64, 64), activation=torch.tanh, output_activation=None):
+    def __init__(self, input_size, hidden_sizes=(64, 64), activation=nn.LeakyReLU(negative_slope=0.2), output_activation=None):
         super(ValueNetwork, self).__init__(input_size, 1, hidden_sizes, activation, output_activation)
 
 if __name__ == '__main__':

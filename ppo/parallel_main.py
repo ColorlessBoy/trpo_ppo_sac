@@ -132,7 +132,7 @@ def parallel_run(rank, size, fn, args, backend='gloo'):
                 args.env_name,      # env_name
                 args.device if (args.device == 'cpu') else 'cuda:{}'.format(rank % torch.cuda.device_count()), # device
                 args.seed + rank,   # seed
-                (64, 64),           # hidden_sizes
+                (400, 300),         # hidden_sizes
                 args.episodes,      # episodes
                 1000,               # max_episode_step
                 args.batch,         # batch_size

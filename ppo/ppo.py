@@ -80,7 +80,7 @@ class PPO(object):
             log_action_probs, e = self.actor.get_log_prob(state, action)
             ratio = torch.exp(log_action_probs - old_log_action_probs)
             ratio2 = ratio.clamp(1 - self.clip, 1 + self.clip)
-            actor_loss = 0.01 * e.mean() - torch.min(ratio * advantage, ratio2 * advantage).mean()
+            actor_loss = -0.02 * e.mean() - torch.min(ratio * advantage, ratio2 * advantage).mean()
             actor_loss.backward()
 
             self.actor_optim.step()
