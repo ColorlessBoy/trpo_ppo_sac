@@ -21,12 +21,13 @@ class Memory(object):
         return len(self.memory)
 
 class EnvSampler(object):
-    def __init__(self, env, max_episode_step=1000):
+    def __init__(self, env, max_episode_step=1000, reward_scale=1.0):
         self.env = env
         self.max_episode_step = max_episode_step
         self.action_scale = (env.action_space.high - env.action_space.low)/2
         self.action_bias = (env.action_space.high + env.action_space.low)/2
-        self.episode_num = -1
+        self.episode_num  = -1
+        self.reward_scale = reward_scale
         self.env_init()
     
     # action_encode and action_decode project action into [-1, 1]^n
@@ -61,9 +62,9 @@ class EnvSampler(object):
             if mask == 1.0 and idx == batch_size - 1:
                 print("Warning: trajectory cut off by epoch at {}".format(self.episode_step))
                 reward += get_value(next_state)
-                memory.push(self.state, action_, reward, next_state, 0.0)
+                memory.push(self.state, action_, reward * self.reward_scale, next_state, 0.0)
             else:
-                memory.push(self.state, action_, reward, next_state, mask)
+                memory.push(self.state, action_, reward * self.reward_scale, next_state, mask)
 
             self.state = next_state
 

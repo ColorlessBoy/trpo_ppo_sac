@@ -48,19 +48,22 @@ class GlobalPPO(PPO):
     def update_actor(self, state, action, advantage):
         start_time = time()
         #update actor network
-        old_pi = self.actor.get_detach_pi(state)
-        log_action_probs = self.actor.get_log_prob(state, action)
-        old_log_action_probs = log_action_probs.clone().detach()
+        with torch.no_grad():
+            old_pi = self.actor.get_detach_pi(state)
+            old_log_action_probs, _ = self.actor.get_log_prob(state, action)
+
         actor_loss = 0.0
         
         rank = dist.get_rank()
         for i in range(self.pi_steps_per_update):
+            self.actor_optim.zero_grad()
+
+            log_action_probs, e = self.actor.get_log_prob(state, action)
             ratio = torch.exp(log_action_probs - old_log_action_probs)
             ratio2 = ratio.clamp(1 - self.clip, 1 + self.clip)
-            actor_loss = -torch.min(ratio * advantage, ratio2 * advantage).mean()
-            
-            self.actor_optim.zero_grad()
+            actor_loss = 0.01 * e.mean() - torch.min(ratio * advantage, ratio2 * advantage).mean()
             actor_loss.backward()
+
             self.average_parameters_grad(self.actor)
             if rank == 0:
                 self.actor_optim.step()
@@ -75,7 +78,6 @@ class GlobalPPO(PPO):
                 print("Upto target_kl at Step {}".format(i))
                 break
 
-            log_action_probs = self.actor.get_log_prob(state, action)
         print('GlobalPPO updates actor by using {}s.'.format(time() - start_time))
         return actor_loss
     

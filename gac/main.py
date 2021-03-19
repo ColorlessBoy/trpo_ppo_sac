@@ -90,7 +90,8 @@ def main(args):
             yield t, test_ret, test_len
 
 Args = namedtuple('Args',
-               ('env_name', 
+               ('alg_name',
+                'env_name', 
                 'device', 
                 'seed', 
                 'hidden_sizes', 
@@ -132,7 +133,8 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
 
-    alg_args = Args(args.env,       # env_name
+    alg_args = Args("gac",          # alg_name
+                args.env,           # env_name
                 args.device,        # device
                 args.seed,          # seed
                 [400, 300],         # hidden_sizes

@@ -4,6 +4,8 @@ from time import time
 import os
 import csv
 from collections import namedtuple
+import json
+import numpy as np
 
 from utils import EnvSampler
 from models import PolicyNetwork, ValueNetwork
@@ -27,19 +29,22 @@ from ppo import PPO
 # 15. value_lr (default = 1e-3)
 def main(args):
     env = gym.make(args.env_name)
+    test_env = gym.make(args.env_name)
     device = torch.device(args.device)
 
     # 1.Set some necessary seed.
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
+    np.random.seed(args.seed)
     env.seed(args.seed)
+    test_env.seed(args.seed + 999)
 
     # 2.Create actor, critic, EnvSampler() and PPO.
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.shape[0]
     actor = PolicyNetwork(state_size, action_size, hidden_sizes=args.hidden_sizes)
     critic = ValueNetwork(state_size, hidden_sizes=args.hidden_sizes)
-    env_sampler = EnvSampler(env, args.max_episode_step)
+    env_sampler = EnvSampler(env, args.max_episode_step, args.reward_scale)
     ppo = PPO(actor, 
               critic, 
               clip=args.clip, 
@@ -57,6 +62,19 @@ def main(args):
         state = torch.FloatTensor(state).unsqueeze(0).to(device)
         action = actor.select_action(state)
         return action.detach().cpu().numpy()[0]
+    
+    def test_agent():
+        test_ret, test_len = 0, 0
+        for j in range(10):
+            o, d, ep_ret, ep_len = test_env.reset(), False, 0, 0
+            while not(d or (ep_len == args.max_episode_step)):
+                # Take deterministic actions at test time 
+                o, r, d, _ = test_env.step(env_sampler.action_decode(get_action(o)))
+                ep_ret += r
+                ep_len += 1
+            test_ret += ep_ret
+            test_len += ep_len
+        return test_ret / 10, test_len / 10
 
     def get_value(state):
         with torch.no_grad():
@@ -65,14 +83,19 @@ def main(args):
         return value.cpu().numpy()[0, 0]
 
     total_step = 0
-    for episode in range(1, args.episodes+1):
-        episode_reward, samples = env_sampler(get_action, args.batch_size, get_value)
+    for _ in range(1, args.episodes+1):
+        _, samples = env_sampler(get_action, args.batch_size, get_value)
         actor_loss, value_loss = ppo.update(*samples)
         total_step += args.batch_size
-        yield total_step, episode_reward, actor_loss, value_loss
+
+        print("loss_actor = {:<22}, loss_critic = {:<22}".format(actor_loss, value_loss))
+
+        test_ret, test_len = test_agent()
+        yield total_step, test_ret, test_len
 
 Args = namedtuple('Args',
-            ('env_name', 
+               ('alg_name',
+                'env_name', 
                 'device', 
                 'seed', 
                 'hidden_sizes', 
@@ -86,7 +109,8 @@ Args = namedtuple('Args',
                 'pi_steps_per_update',
                 'value_steps_per_update',
                 'pi_lr',
-                'value_lr'))
+                'value_lr',
+                'reward_scale'))
 
 if __name__ == "__main__":
     import argparse
@@ -94,44 +118,56 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run experiment with optional args')
     parser.add_argument('--seed', type=int, default=0, metavar='N',
                         help='random seed (default: 0)')
-    parser.add_argument('--batch', type=int, default=1000, metavar='N',
-                        help='number of batch size (default: 1000)')
+    parser.add_argument('--batch', type=int, default=4000, metavar='N',
+                        help='number of batch size (default: 4000)')
     parser.add_argument('--episodes', type=int, default=1000, metavar='N',
                         help='number of experiment episodes(default: 1000)')
     parser.add_argument('--env_name', default='HalfCheetah-v2', metavar='G',
                         help='name of environment name (default: HalfCheetah-v2)')
-    parser.add_argument('--device', default='cpu', metavar='G',
-                        help='device (default cpu)')
+    parser.add_argument('--device', default='cuda', metavar='G',
+                        help='device (default cuda)')
+    parser.add_argument('--reward_scale', type=float, default=1.0, metavar='N',
+                        help='reward scale(default 1.0)')
     
     args = parser.parse_args()
 
-    alg_args = Args(args.env_name,  # env_name
+    alg_args = Args("ppo",          # alg_name
+                args.env_name,      # env_name
                 args.device,        # device
                 args.seed,          # seed
-                (64, 64),           # hidden_sizes
+                (400, 300),         # hidden_sizes
                 args.episodes,      # episodes
                 1000,               # max_episode_step
                 args.batch,         # batch_size
-                0.99,               # gamma
+                0.995,              # gamma
                 0.97,               # tau
                 0.2,                # clip
                 0.015,              # target_kl
                 80,                 # pi_steps_per_update
                 50,                 # value_steps_per_update
                 3e-4,               # pi_lr
-                1e-3)               # value_lr
+                1e-3,               # value_lr
+                args.reward_scale)  # reward scale             
 
-    logdir = "./logs/alg_ppo/env_{}".format(alg_args.env_name)
-    file_name = 'alg_ppo_env_{}_batch{}_seed{}_time{}.csv'.format(alg_args.env_name, alg_args.batch_size, alg_args.seed, time())
+    logdir = "./data/ppo/{}/{}-seed{}-{}".format(alg_args.env_name, alg_args.env_name,alg_args.seed, time())
+    config_name = 'config.json'
+    file_name = 'progress.csv'
     if not os.path.exists(logdir):
         os.makedirs(logdir)
+
+    config_json = json.dumps(alg_args._asdict())
+    config_json = json.loads(config_json)
+    output = json.dumps(config_json, separators=(',',':\t'), indent=4, sort_keys=True)
+    with open(os.path.join(logdir, config_name), 'w') as out:
+        out.write(output)
+
     full_name = os.path.join(logdir, file_name)
 
+    full_name = os.path.join(logdir, file_name)
     csvfile = open(full_name, 'w')
-    writer = csv.writer(csvfile)
-    writer.writerow(['step', 'reward'])
-    start_time = time()
-    for step, reward, actor_loss, value_loss in main(alg_args):
-        writer.writerow([step, reward])
-        print('Step {}: Reward = {}, actor_loss = {}, value_loss = {}'.format(step, reward, actor_loss, value_loss))
-    print("Total time: {}s.".format(time() - start_time))
+    writer = csv.writer(csvfile, delimiter='\t')
+    writer.writerow(['TotalEnvInteracts', 'AverageTestEpRet', 'AverageTestEpLen'])
+
+    for step, reward, len in main(alg_args):
+        writer.writerow([step, reward, len])
+        csvfile.flush()
