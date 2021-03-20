@@ -82,6 +82,8 @@ def get_datasets(logdir, condition=None):
 
             try:
                 exp_data = pd.read_csv(os.path.join(root,'progress.csv'), delimiter='\t')
+                if 'ppo' in exp_name or 'trpo' in exp_name:
+                    exp_data['TotalEnvInteracts'] /= 10
             except:
                 print('Could not read from %s'%os.path.join(root,'progress.csv'))
                 continue
