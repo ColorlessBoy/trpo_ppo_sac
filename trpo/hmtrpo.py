@@ -39,3 +39,19 @@ class HMTRPO(LocalTRPO):
         actor_loss = super(HMTRPO, self).linesearch(state, action, advantage, fullstep, steps)
         print('HMTRPO linesearch() uses {}s.'.format(time() - start_time)) 
         return actor_loss
+
+    def update_critic(self, state, target_value):
+        start_time = time()
+        rank = dist.get_rank()
+        critic_loss = 0.0
+        for _ in range(self.value_steps_per_update):
+            value = self.critic(state)
+            critic_loss = F.mse_loss(value, target_value)
+            self.critic_optim.zero_grad()
+            critic_loss.backward()
+            self.average_parameters_grad(self.critic)
+            if rank == 0:
+                self.critic_optim.step()
+            self.synchronous_parameters(self.critic)
+        print("GlobalTRPO updates critic by using {}s".format(time() - start_time))
+        return critic_loss
