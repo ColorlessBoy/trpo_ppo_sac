@@ -20,8 +20,8 @@ class TRPO(object):
                 damping=0.1,
                 max_kl=0.01,
                 device=torch.device("cpu"),
-                ent_coef=0.02,
-                policy_coef=10.0):
+                ent_coef=0.0,
+                policy_coef=1.0):
         self.actor = actor
         self.critic = critic
         self.critic_optim = Adam(self.critic.parameters(), value_lr)
