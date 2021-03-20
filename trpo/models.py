@@ -57,7 +57,7 @@ class PolicyNetwork(Network):
 
     def get_log_prob(self, x, actions):
         pi = self.forward(x)
-        return pi.log_prob(actions).sum(1, keepdim=True)
+        return pi.log_prob(actions).sum(1, keepdim=True), pi.entropy()
 
     def select_action(self, state):
         with torch.no_grad():

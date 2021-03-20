@@ -71,7 +71,7 @@ class GlobalTRPO(HMTRPO):
                 new_params = prev_params + alpha * fullstep
                 set_flat_params_to(self.actor, new_params)
                 kl_loss = self.get_kl_loss(state)
-                log_prob_action = self.actor.get_log_prob(state, action)
+                log_prob_action, _ = self.actor.get_log_prob(state, action)
                 actor_loss = self.get_actor_loss(advantage, log_prob_action, self.log_prob_action_old)
 
                 self.average_variables(kl_loss)

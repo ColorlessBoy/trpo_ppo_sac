@@ -19,7 +19,9 @@ class TRPO(object):
                 tau=0.97,
                 damping=0.1,
                 max_kl=0.01,
-                device=torch.device("cpu")):
+                device=torch.device("cpu"),
+                ent_coef=0.02,
+                policy_coef=10.0):
         self.actor = actor
         self.critic = critic
         self.critic_optim = Adam(self.critic.parameters(), value_lr)
@@ -31,6 +33,8 @@ class TRPO(object):
         self.damping = damping
         self.max_kl = max_kl
         self.device = device
+        self.ent_coef = ent_coef
+        self.policy_coef = policy_coef
 
     def getGAE(self, state, reward, mask):
         # On CPU.
@@ -63,9 +67,9 @@ class TRPO(object):
         return (advantage * torch.exp(log_prob_action - log_prob_action_old)).mean()
 
     def get_actor_loss_grad(self, state, action, advantage):
-        log_prob_action = self.actor.get_log_prob(state, action)
+        log_prob_action, e = self.actor.get_log_prob(state, action)
         self.log_prob_action_old = log_prob_action.clone().detach()
-        self.actor_loss_old = self.get_actor_loss(advantage, log_prob_action, self.log_prob_action_old)
+        self.actor_loss_old = self.get_actor_loss(advantage, log_prob_action, self.log_prob_action_old) * self.policy_coef - e.mean() * self.ent_coef
 
         grads = torch.autograd.grad(self.actor_loss_old, self.actor.parameters())
         loss_grad = torch.cat([grad.view(-1) for grad in grads]).data
@@ -102,7 +106,7 @@ class TRPO(object):
                 new_params = prev_params + alpha * fullstep
                 set_flat_params_to(self.actor, new_params)
                 kl_loss = self.get_kl_loss(state)
-                log_prob_action = self.actor.get_log_prob(state, action)
+                log_prob_action, _ = self.actor.get_log_prob(state, action)
                 actor_loss = self.get_actor_loss(advantage, log_prob_action, self.log_prob_action_old)
                 if actor_loss > self.actor_loss_old and kl_loss < self.max_kl:
                     print("linesearch successes at step {}".format(i))
