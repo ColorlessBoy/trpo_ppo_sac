@@ -69,7 +69,7 @@ class TRPO(object):
     def get_actor_loss_grad(self, state, action, advantage):
         log_prob_action, e = self.actor.get_log_prob(state, action)
         self.log_prob_action_old = log_prob_action.clone().detach()
-        self.actor_loss_old = self.get_actor_loss(advantage, log_prob_action, self.log_prob_action_old) * self.policy_coef - e.mean() * self.ent_coef
+        self.actor_loss_old = self.get_actor_loss(advantage, log_prob_action, self.log_prob_action_old) * self.policy_coef + e.mean() * self.ent_coef
 
         grads = torch.autograd.grad(self.actor_loss_old, self.actor.parameters())
         loss_grad = torch.cat([grad.view(-1) for grad in grads]).data
