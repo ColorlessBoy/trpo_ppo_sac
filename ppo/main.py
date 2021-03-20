@@ -168,6 +168,6 @@ if __name__ == "__main__":
     writer = csv.writer(csvfile, delimiter='\t')
     writer.writerow(['TotalEnvInteracts', 'AverageTestEpRet', 'AverageTestEpLen'])
 
-    for step, reward, len in main(alg_args):
-        writer.writerow([step, reward, len])
+    for step, reward, length in main(alg_args):
+        writer.writerow([step, reward, length])
         csvfile.flush()

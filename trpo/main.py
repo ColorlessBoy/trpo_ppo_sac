@@ -122,7 +122,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run experiment with optional args')
     parser.add_argument('--seed', type=int, default=0, metavar='N',
                         help='random seed (default: 0)')
-    parser.add_argument('--batch', type=int, default=1000, metavar='N',
+    parser.add_argument('--batch', type=int, default=4000, metavar='N',
                         help='number of batch size (default: 1000)')
     parser.add_argument('--episodes', type=int, default=7500, metavar='N',
                         help='number of eperiment episodes(default: 7500)')
@@ -172,6 +172,6 @@ if __name__ == '__main__':
     writer = csv.writer(csvfile, delimiter='\t')
     writer.writerow(['TotalEnvInteracts', 'AverageTestEpRet', 'AverageTestEpLen'])
 
-    for step, reward, actor_loss, value_loss in main(alg_args):
-        writer.writerow([step, reward])
-        print("Step {}: Reward = {}, Actor_loss = {}, Value_loss = {}".format(step, reward, actor_loss, value_loss))
+    for step, reward, length in main(alg_args):
+        writer.writerow([step, reward, length])
+        csvfile.flush()

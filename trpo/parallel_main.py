@@ -72,9 +72,9 @@ def run(rank, size, args):
         alg = LocalTRPO2(**trpo_args)
     elif args.alg_name == 'trpo_local3':
         alg = LocalTRPO3(**trpo_args)
-    elif args.alg_name == 'trpo_local4':
+    elif args.alg_name == 'trpo-distributed':
         alg = HMTRPO(**trpo_args)
-    elif args.alg_name  == 'trpo_global':
+    elif args.alg_name  == 'trpo-global':
         alg = GlobalTRPO(**trpo_args)
 
     def get_action(state):
@@ -113,29 +113,30 @@ def run(rank, size, args):
         test_ret, test_len = test_agent()
         yield total_step, test_ret, test_len
 
-Args = namedtuple('Args',
-                ('alg_name',
-                'env_name', 
-                'device', 
-                'seed', 
-                'hidden_sizes', 
-                'episodes', 
-                'max_episode_step', 
-                'batch_size', 
-                'gamma', 
-                'tau', 
-                'clip', 
-                'target_kl',
-                'pi_steps_per_update',
-                'value_steps_per_update',
-                'pi_lr',
-                'value_lr',
-                'reward_scale'))
+Args = namedtuple('Args', 
+                    ('alg_name',
+                    'env_name',
+                    'device',
+                    'seed',
+                    'hidden_sizes',
+                    'max_episode_step',
+                    'batch_size',
+                    'episodes',
+                    'value_lr',
+                    'value_steps_per_update',
+                    'cg_steps',
+                    'linesearch_steps',
+                    'gamma',
+                    'tau',
+                    'damping',
+                    'max_kl',
+                    'init_std',
+                    'reward_scale'))
 
-def parallel_run(start_time, rank, size, fn, args, backend='gloo'):
+def parallel_run(rank, size, fn, args, backend='gloo'):
     """ Initialize the distributed environment. """
     os.environ['MASTER_ADDR'] = '127.0.0.1'
-    os.environ['MASTER_PORT'] = '29500'
+    os.environ['MASTER_PORT'] = '11234'
     dist.init_process_group(backend, rank=rank, world_size=size)
 
     alg_args = Args(args.alg_name,  # alg_name
@@ -176,9 +177,9 @@ def parallel_run(start_time, rank, size, fn, args, backend='gloo'):
     writer = csv.writer(csvfile, delimiter='\t')
     writer.writerow(['TotalEnvInteracts', 'AverageTestEpRet', 'AverageTestEpLen'])
 
-    for step, reward, actor_loss, value_loss in fn(alg_args):
-        writer.writerow([step, reward])
-        print("Step {}: Reward = {}, Actor_loss = {}, Value_loss = {}".format(step, reward, actor_loss, value_loss))
+    for step, reward, length in fn(rank, size, alg_args):
+        writer.writerow([step, reward, length])
+        csvfile.flush()
 
     csvfile.close()
 

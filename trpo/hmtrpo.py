@@ -1,5 +1,6 @@
 import torch
 import torch.distributed as dist
+import torch.nn.functional as F
 from local_trpo import LocalTRPO
 
 from time import time
@@ -21,6 +22,14 @@ class HMTRPO(LocalTRPO):
                                     value_steps_per_update,
                                     cg_steps, linesearch_steps,
                                     gamma, tau, damping, max_kl, device)
+
+    def average_parameters_grad(self, model):
+        size = float(dist.get_world_size())
+        rank = dist.get_rank()
+        for param in model.parameters():
+            dist.reduce(param.grad.data, dst=0)
+            if rank == 0:
+                param.grad.data /= size
 
     def get_actor_loss_grad(self, state, action, advantage):
         loss_grad = super(HMTRPO, self).get_actor_loss_grad(state, action, advantage)
