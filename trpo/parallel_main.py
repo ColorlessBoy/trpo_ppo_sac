@@ -197,8 +197,8 @@ if __name__ == "__main__":
                         help='random seed (default: 0)')
     parser.add_argument('--agent', type=int, default=8, metavar='N',
                         help='number of agents (default: 8)')
-    parser.add_argument('--batch', type=int, default=1000, metavar='N',
-                        help='number of batch size (default: 1000)')
+    parser.add_argument('--batch', type=int, default=4000, metavar='N',
+                        help='number of batch size (default: 4000)')
     parser.add_argument('--episodes', type=int, default=7500, metavar='N',
                         help='number of experiment episodes(default: 1000)')
     parser.add_argument('--reward_scale', type=float, default=1.0, metavar='N',

@@ -123,7 +123,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=0, metavar='N',
                         help='random seed (default: 0)')
     parser.add_argument('--batch', type=int, default=4000, metavar='N',
-                        help='number of batch size (default: 1000)')
+                        help='number of batch size (default: 4000)')
     parser.add_argument('--episodes', type=int, default=7500, metavar='N',
                         help='number of eperiment episodes(default: 7500)')
     parser.add_argument('--env_name', default='HalfCheetah-v2', metavar='G',
