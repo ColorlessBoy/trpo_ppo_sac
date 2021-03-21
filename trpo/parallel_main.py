@@ -35,8 +35,12 @@ from global_trpo import GlobalTRPO
 # 15. max_kl (default = 0.01)
 
 def run(rank, size, args):
-    env = gym.make(args.env_name)
-    test_env = gym.make(args.env_name)
+    if "Hopper" in args.env_name:
+        env = gym.make(args.env_name, terminate_when_unhealthy=False)
+        test_env = gym.make(args.env_name, terminate_when_unhealthy=False)
+    else:
+        env = gym.make(args.env_name)
+        test_env = gym.make(args.env_name)
     device = torch.device(args.device)
 
     # 1.Set some necessary seed.
