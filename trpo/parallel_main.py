@@ -16,6 +16,7 @@ from local_trpo2 import LocalTRPO2
 from local_trpo3 import LocalTRPO3
 from hmtrpo import HMTRPO
 from global_trpo import GlobalTRPO
+from distributed_trpo import DistributedTRPO
 
 # The properties of args:
 # 1. env_name (default = 'HalfCheetah-v2')
@@ -70,14 +71,16 @@ def run(rank, size, args):
         'max_kl': args.max_kl,
         'device': device
     }
-    if args.alg_name == 'trpo_local':
+    if args.alg_name == 'trpo-local':
         alg = LocalTRPO(**trpo_args)
-    elif args.alg_name == 'trpo_local2':
+    elif args.alg_name == 'trpo-local2':
         alg = LocalTRPO2(**trpo_args)
-    elif args.alg_name == 'trpo_local3':
+    elif args.alg_name == 'trpo-local3':
         alg = LocalTRPO3(**trpo_args)
-    elif args.alg_name == 'trpo-distributed':
+    elif args.alg_name == 'trpo-hm':
         alg = HMTRPO(**trpo_args)
+    elif args.alg_name == 'trpo-distributed':
+        alg = DistributedTRPO(**trpo_args)
     elif args.alg_name  == 'trpo-global':
         alg = GlobalTRPO(**trpo_args)
 
@@ -191,7 +194,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='Run experiment with optional args')
-    parser.add_argument('--alg_name', default="trpo_global", metavar='G',
+    parser.add_argument('--alg_name', default="trpo-distributed", metavar='G',
                         help='name of the algorithm to run (default: trpo_global)')
     parser.add_argument('--env_name', default="HalfCheetah-v2", metavar='G',
                         help='name of environment to run (default: HalfCheetah-v2)')

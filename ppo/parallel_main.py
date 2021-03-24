@@ -13,6 +13,7 @@ from utils import EnvSampler
 from models import PolicyNetwork, ValueNetwork
 from local_ppo import LocalPPO
 from global_ppo import GlobalPPO
+from distributed_ppo import DistributedPPO
 
 # The properties of args:
 # 1. env_name (default = 'HalfCheetah-v2')
@@ -67,7 +68,9 @@ def run(rank, size, args):
     }
     if args.alg_name == 'ppo-parallel':
         alg = LocalPPO(**ppo_args)
-    elif args.alg_name  == 'ppo-global':
+    elif args.alg_name == 'ppo-distributed':
+        alg = DistributedPPO(**ppo_args)
+    else:
         alg = GlobalPPO(**ppo_args)
 
     def get_action(state):
@@ -182,8 +185,8 @@ if __name__ == "__main__":
                         help='random seed (default: 0)')
     parser.add_argument('--agent', type=int, default=8, metavar='N',
                         help='number of agents (default: 8)')
-    parser.add_argument('--alg_name', default="ppo-parallel", metavar='G',
-                        help='name of the algorithm to run (default: ppo-parallel)')
+    parser.add_argument('--alg_name', default="ppo-distributed", metavar='G',
+                        help='name of the algorithm to run (default: ppo-distributed)')
     parser.add_argument('--env_name', default="HalfCheetah-v3", metavar='G',
                         help='name of environment to run (default: HalfCheetah-v3)')
     parser.add_argument('--batch', type=int, default=4000, metavar='N',
