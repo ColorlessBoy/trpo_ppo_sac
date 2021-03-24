@@ -49,10 +49,13 @@ class DistributedPPO(PPO):
         for n, tensor in enumerate(tensor_list):
             if n != rank and self.weights[rank][n] > 0:
                 variables.data.add_(self.weights[rank][n] * tensor)
-    
+
     def synchronous_parameters(self, model):
         for param in model.parameters():
             dist.broadcast(param.data, src=0)
+
+    def synchronous_variables(self, variables):
+        dist.broadcast(variables.data, src=0)
     
     def update_actor(self, state, action, advantage):
         #update actor network
@@ -62,7 +65,6 @@ class DistributedPPO(PPO):
 
         actor_loss = 0.0
         
-        rank = dist.get_rank()
         for i in range(self.pi_steps_per_update):
             self.actor_optim.zero_grad()
 
@@ -78,7 +80,7 @@ class DistributedPPO(PPO):
             pi = self.actor.get_detach_pi(state)
             kl = kl_divergence(old_pi, pi).sum(axis=1).mean()
 
-            self.average_variables(kl)
+            self.synchronous_variables(kl)
 
             if kl > self.target_kl:
                 print("Upto target_kl at Step {}".format(i))
